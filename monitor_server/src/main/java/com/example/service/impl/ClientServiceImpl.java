@@ -44,7 +44,8 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
     public boolean verifyAndRegister(String token) {
         if (this.registerToken.equals(token)){
             int id = this.randomClientId();
-            Client client = new Client(id, "Unnamed" , token, new Date());
+            System.out.println(id);
+            Client client = new Client(id, "Unnamed device", token, "cn", "Unnamed node", new Date());
             if (this.save(client)){
                 registerToken = this.generateNewToken();
                 this.addClientCache(client);
@@ -69,7 +70,7 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
         ClientDetail detail = new ClientDetail();
         BeanUtils.copyProperties(vo, detail);
         detail.setClientId(client.getId());
-        if (Objects.nonNull(detailMapper.selectById(client.getId()))){
+        if (detailMapper.selectById(client.getId()) != null){
             detailMapper.updateById(detail);
         } else {
             detailMapper.insert(detail);
