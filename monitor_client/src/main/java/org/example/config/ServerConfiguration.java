@@ -4,7 +4,10 @@ import com.alibaba.fastjson2.JSONObject;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.example.entity.ConnectionConfig;
+import org.example.utils.MonitorUtils;
 import org.example.utils.NetUtils;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -13,14 +16,18 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Scanner;
 
 @Slf4j
 @Configuration
-public class ServerConfiguration {
+public class ServerConfiguration implements ApplicationRunner {
 
     @Resource
     NetUtils net;
+
+    @Resource
+    MonitorUtils monitor;
 
     @Bean
     ConnectionConfig connectionConfig() {
@@ -32,16 +39,32 @@ public class ServerConfiguration {
         return config;
     }
 
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        log.info("Updating basic information to server...");
+        net.updateBaseDetails(monitor.monitorBaseDetail());
+    }
+
     private ConnectionConfig registerToServer() {
         Scanner scanner = new Scanner(System.in);
-        String token, address;
+        String token, address, ifName;
         do {
             log.info("Please input server address:");
             address = scanner.nextLine();
             log.info("Please input token:");
             token = scanner.nextLine();
+            List<String> ifs = monitor.listNetworkInterfaceName();
+            if (ifs.size()>=1) {
+                log.info("Detecting that there are multiple Internet cards in your device");
+                do {
+                    log.info("Choose the device need to be monitored:");
+                    ifName = scanner.nextLine();
+                } while (!ifs.contains(ifName));
+            }else {
+                ifName = ifs.get(0);
+            }
         } while(!net.registerToServer(address, token));
-        ConnectionConfig config = new ConnectionConfig(address, token);
+        ConnectionConfig config = new ConnectionConfig(address, token, ifName);
         this.saveConfigurationToFile(config);
         return config;
     }

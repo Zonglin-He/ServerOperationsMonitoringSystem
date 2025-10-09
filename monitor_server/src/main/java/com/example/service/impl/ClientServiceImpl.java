@@ -68,7 +68,7 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
     public void updateClientDetail(ClientDetailVO vo, Client client) {
         ClientDetail detail = new ClientDetail();
         BeanUtils.copyProperties(vo, detail);
-        detail.setId(client.getId());
+        detail.setClientId(client.getId());
         if (Objects.nonNull(detailMapper.selectById(client.getId()))){
             detailMapper.updateById(detail);
         } else {
