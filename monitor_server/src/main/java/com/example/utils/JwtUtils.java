@@ -47,9 +47,14 @@ public class JwtUtils {
 
     private boolean deleteToken(String uuid, Date time){
         if (this.isInvalidToken(uuid)){return false;}
-        Date now = new Date();
-        long expire = Math.max(time.getTime() - now.getTime(), 0);
-        template.opsForValue().set(Const.JWT_BLACK_LIST + uuid, "", expire, TimeUnit.MILLISECONDS);
+        long nowMillis = System.currentTimeMillis();
+        long targetMillis = time != null ? time.getTime() : nowMillis;
+        long expireMillis = targetMillis - nowMillis;
+        if (expireMillis <= 0) {
+            expireMillis = 1;
+        }
+        template.opsForValue()
+                .set(Const.JWT_BLACK_LIST + uuid, "", expireMillis, TimeUnit.MILLISECONDS);
         return true;
     }
 

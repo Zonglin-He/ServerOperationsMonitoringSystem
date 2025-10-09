@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.entity.BaseDetail;
 import org.example.entity.ConnectionConfig;
 import org.example.entity.Response;
+import org.example.entity.RuntimeDetail;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
@@ -43,6 +44,14 @@ public class NetUtils {
         }
         else{
             log.error("Update base details failed : {}", response.message());
+        }
+    }
+
+    public void updateRuntimeDetails(RuntimeDetail detail) {
+        Response response = this.doPost("/runtime", detail);
+        if(!response.success()) {
+            log.warn("When updating the runtime status, an abnormal response content is received from the server:" +
+                    " {}", response.message());
         }
     }
 
