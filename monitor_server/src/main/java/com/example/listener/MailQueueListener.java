@@ -159,11 +159,6 @@ public class MailQueueListener {
     private SubjectContent defaultsByType(String type, Integer code) {
         String c = (code == null) ? "—" : String.valueOf(code);
         return switch (type == null ? "" : type) {
-            case "register" -> new SubjectContent(
-                    "Verify your email",
-                    "Your verification code is: " + c +
-                            ". It will expire in 3 minutes. For your account’s security, do not share this code with anyone."
-            );
             case "reset" -> new SubjectContent(
                     "Password reset code",
                     "You requested a password reset. Your verification code is: " + c +

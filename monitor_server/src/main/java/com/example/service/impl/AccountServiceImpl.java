@@ -103,32 +103,6 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
         return null;
     }
 
-    @Override
-    public String registerEmailAccount(EmailRegisterVO vo) {
-        String email = vo.getEmail();
-        String username = vo.getUsername();
-        String key = Const.VERIFY_EMAIL_DATA + email;
-        String code = stringRedisTemplate.opsForValue().get(key);
-        if (!code.equals(vo.getCode())) {return "The verification code is wrong. Please enter it again";}
-        if (this.existAccountByEmail(email)) {return "This email is already in use";}
-        if (this.existAccountByUsername(username)) {return "This username is registered. Please change a new one";}
-        String password = encoder.encode(vo.getPassword());
-        Account account = new Account(null, username, password, email, Const.ROLE_DEFAULT, null, new Date());
-        if (this.save(account)) {
-            stringRedisTemplate.delete(key);
-            return null;
-        }
-        else {return "Wrong! Please contact administrator";}
-    }
-
-    private boolean existAccountByEmail(String email){
-        return this.baseMapper.exists(Wrappers.<Account>query().eq("email", email));
-    }
-
-    private boolean existAccountByUsername(String username){
-        return this.baseMapper.exists(Wrappers.<Account>query().eq("username", username));
-    }
-
 
     @Override
     public Account findAccountById(int id) {
