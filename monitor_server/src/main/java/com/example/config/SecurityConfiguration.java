@@ -41,7 +41,7 @@ public class SecurityConfiguration {
         return http
                 .authorizeHttpRequests(conf -> conf
                         .requestMatchers("/api/auth/**", "/error").permitAll()
-                        .requestMatchers("/images/**").permitAll()
+                        .requestMatchers("/monitor/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(conf -> conf.loginProcessingUrl("/api/auth/login")
