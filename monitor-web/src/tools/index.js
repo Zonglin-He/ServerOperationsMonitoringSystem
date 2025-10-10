@@ -27,6 +27,8 @@ function percentageToStatus(percentage) {
 }
 
 const defaultOsIcon = {icon: 'fa-linux', color: 'grey'}
+const defaultFlagClass = 'flag-icon flag-icon-xx'
+const supportedLocations = new Set(['cn', 'hk', 'jp', 'us', 'sg', 'kr', 'de'])
 
 function osNameToIcon(name) {
     if(!name)
@@ -56,6 +58,18 @@ function cpuNameToImage(name) {
         return 'Intel.png'
 }
 
+function locationToFlagClass(code) {
+    if(!code)
+        return defaultFlagClass
+    const normalized = String(code).trim().toLowerCase()
+    if(supportedLocations.has(normalized))
+        return `flag-icon flag-icon-${normalized}`
+    const suffixMatch = normalized.match(/[a-z]{2}$/)
+    if(suffixMatch && supportedLocations.has(suffixMatch[0]))
+        return `flag-icon flag-icon-${suffixMatch[0]}`
+    return defaultFlagClass
+}
+
 const { copy } = useClipboard()
 const copyIp = ip => copy(ip).then(() => ElMessage.success('IP address copied to clipboard'))
 
@@ -76,4 +90,4 @@ function rename(id, name, after) {
     )
 }
 
-export { fitByUnit, percentageToStatus, cpuNameToImage, osNameToIcon, rename, copyIp }
+export { fitByUnit, percentageToStatus, cpuNameToImage, osNameToIcon, rename, copyIp, locationToFlagClass }

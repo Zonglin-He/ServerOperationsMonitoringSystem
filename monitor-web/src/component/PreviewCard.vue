@@ -1,6 +1,6 @@
 <script setup>
 import {computed} from 'vue'
-import {copyIp, fitByUnit, osNameToIcon, percentageToStatus, rename} from '@/tools'
+import {copyIp, fitByUnit, locationToFlagClass, osNameToIcon, percentageToStatus, rename} from '@/tools'
 
 const props = defineProps({
   data: Object,
@@ -14,6 +14,21 @@ const osDisplay = computed(() => {
   const parts = [osName.value, osVersion.value].filter(Boolean)
   return parts.length ? parts.join(' ') : 'Unknown'
 })
+const locationClass = computed(() => locationToFlagClass(props.data?.location))
+const memoryUsage = computed(() => props.data?.memoryUsage ?? 0)
+const memoryTotal = computed(() => props.data?.memory ?? 0)
+const memoryPercentage = computed(() => {
+  if(!memoryTotal.value)
+    return 0
+  const percent = memoryUsage.value / memoryTotal.value * 100
+  return Math.min(Math.max(percent, 0), 100)
+})
+const memoryUsageLabel = computed(() => {
+  const usage = memoryUsage.value.toFixed(1)
+  if(!memoryTotal.value)
+    return `${usage} GB`
+  return `${usage} GB / ${memoryTotal.value.toFixed(1)} GB`
+})
 </script>
 
 <template>
@@ -21,7 +36,7 @@ const osDisplay = computed(() => {
     <div style="display: flex;justify-content: space-between">
       <div>
         <div class="name">
-          <span :class="`flag-icon flag-icon-${data.location}`"></span>
+          <span :class="locationClass"></span>
           <span style="margin: 0 5px">{{ data.name }}</span>
           <i class="fa-solid fa-pen-to-square interact-item" @click.stop="rename(data.id, data.name, update)"></i>
         </div>
@@ -53,7 +68,7 @@ const osDisplay = computed(() => {
       <i class="fa-solid fa-microchip"></i>
       <span style="margin-right: 10px">{{` ${data.cpuCore} CPU`}}</span>
       <i class="fa-solid fa-memory"></i>
-      <span>{{` ${data.memory.toFixed(1)} GB`}}</span>
+      <span>{{` ${memoryTotal.toFixed(1)} GB`}}</span>
     </div>
     <div class="progress">
       <span>{{`CPU: ${(data.cpuUsage * 100).toFixed(1)}%`}}</span>
@@ -61,9 +76,9 @@ const osDisplay = computed(() => {
                    :percentage="data.cpuUsage * 100" :stroke-width="5" :show-text="false"/>
     </div>
     <div class="progress">
-      <span>Memory: <b>{{data.memoryUsage.toFixed(1)}}</b> GB</span>
-      <el-progress :status="percentageToStatus(data.memoryUsage/data.memory * 100)"
-                   :percentage="data.memoryUsage/data.memory * 100" :stroke-width="5" :show-text="false"/>
+      <span>Memory: <b>{{ memoryUsageLabel }}</b></span>
+      <el-progress :status="percentageToStatus(memoryPercentage)"
+                   :percentage="memoryPercentage" :stroke-width="5" :show-text="false"/>
     </div>
     <div class="network-flow">
       <div>Network Traffic</div>
