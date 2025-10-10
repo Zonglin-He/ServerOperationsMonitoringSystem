@@ -3,6 +3,12 @@ springdoc:
   swagger-ui:
     operations-sorter: alpha
 
+influx:
+  url: http://localhost:8086
+  token: dev-token          # 你 docker run 里设置的 DOCKER_INFLUXDB_INIT_ADMIN_TOKEN
+  org: dev                  # 你设置的 ORG
+  bucket: monitor
+
 spring:
   mail:
     host: smtp.163.com
@@ -52,6 +58,8 @@ spring:
 
   weather:
     key: ad4395f106234352855ae89861543a9c
+
+
 
 logging:
   level:

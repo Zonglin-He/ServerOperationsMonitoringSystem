@@ -5,6 +5,11 @@ springdoc:
   api-docs:
     enabled: false
 
+influx:
+  url: http://localhost:8086
+  token: dev-token          # 你 docker run 里设置的 DOCKER_INFLUXDB_INIT_ADMIN_TOKEN
+  org: dev                  # 你设置的 ORG
+  bucket: monitor
 # 可保留；若不想在生产打印 SQL，可删掉下面这个 mybatis-plus 块
 mybatis-plus:
   configuration:

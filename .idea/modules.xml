@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/HeZonglin_monitor_jwt.iml" filepath="$PROJECT_DIR$/HeZonglin_monitor_jwt.iml" />
+      <module fileurl="file://$PROJECT_DIR$/monitor-web/monitor-web.iml" filepath="$PROJECT_DIR$/monitor-web/monitor-web.iml" />
     </modules>
   </component>
 </project>
