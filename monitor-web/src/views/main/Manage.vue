@@ -8,6 +8,7 @@ import {Plus} from "@element-plus/icons-vue";
 import {useRoute} from "vue-router";
 import {useStore} from "@/store";
 import TerminalWindow from "@/component/TerminalWindow.vue";
+import {ElMessage} from "element-plus";
 
 const locations = [
   {name: 'cn', desc: 'Mainland China'},
@@ -52,9 +53,32 @@ const clientList = computed(() => {
 
 const register = reactive({
   show: false,
-  token: ''
+  token: '',
+  loading: false
 })
-const refreshToken = () => get('/api/monitor/register', token => register.token = token)
+
+const refreshToken = () => {
+  register.loading = true
+  register.token = ''
+  get('/api/monitor/register', token => {
+    register.token = token
+    register.loading = false
+  }, (message, status, url) => {
+    register.loading = false
+    register.show = false
+    ElMessage.warning(message)
+    console.warn(`Request URL: ${url}, Status: ${status}, Message: ${message}`)
+  })
+}
+
+const openRegisterDrawer = () => {
+  if (!store.isAdmin) {
+    ElMessage.warning('Only administrator accounts can register new hosts.')
+    return
+  }
+  register.show = true
+  refreshToken()
+}
 
 function openTerminal(id) {
   terminal.show = true
@@ -76,7 +100,7 @@ const terminal = reactive({
       </div>
       <div>
         <el-button :icon="Plus" type="primary" plain :disabled="!store.isAdmin"
-                   @click="register.show = true">Add New Host</el-button>
+                   @click="openRegisterDrawer">Add New Host</el-button>
       </div>
     </div>
     <el-divider style="margin: 10px 0"/>
@@ -98,8 +122,8 @@ const terminal = reactive({
       <client-details :id="detail.id" :update="updateList" @delete="updateList" @terminal="openTerminal"/>
     </el-drawer>
     <el-drawer v-model="register.show" direction="btt" :with-header="false"
-               style="width: 600px;margin: 10px auto" size="320" @open="refreshToken">
-      <register-card :token="register.token"/>
+               style="width: 600px;margin: 10px auto" size="320">
+      <register-card :token="register.token" :loading="register.loading"/>
     </el-drawer>
     <el-drawer style="width: 800px" :size="520" direction="btt"
                @close="terminal.id = -1"

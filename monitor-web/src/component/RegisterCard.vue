@@ -2,12 +2,16 @@
 import axios from "axios";
 
 defineProps({
-  token: String
+  token: String,
+  loading: {
+    type: Boolean,
+    default: false
+  }
 })
 </script>
 
 <template>
-  <div class="register-card">
+  <div class="register-card" v-loading="loading">
     <div class="title"><i class="fa-regular fa-square-plus"></i> Add New Host</div>
     <div class="desc">Follow the steps below to add a new host. After adding, you can manage the server in real time and monitor its status.</div>
     <el-divider style="margin: 10px 0"/>
@@ -18,7 +22,7 @@ defineProps({
     <el-input v-model="axios.defaults.baseURL" readonly/>
     <div class="sub-title" style="margin-top: 10px">3. Enter Authorization Token</div>
     <div class="desc">All client requests must include the authorization token to be correctly recognized by the server.</div>
-    <el-input :model-value="token" readonly/>
+    <el-input :model-value="token" readonly placeholder="Token will appear here once generated"/>
   </div>
 </template>
 
