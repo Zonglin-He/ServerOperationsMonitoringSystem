@@ -80,6 +80,13 @@ setInterval(() => {
 }, 10000)
 
 const now = computed(() => details.runtime.list[details.runtime.list.length - 1])
+const osName = computed(() => details.base?.osName || '')
+const osVersion = computed(() => details.base?.osVersion || '')
+const osIcon = computed(() => osNameToIcon(osName.value))
+const osDisplay = computed(() => {
+  const parts = [osName.value, osVersion.value].filter(Boolean)
+  return parts.length ? parts.join(' ') : 'Unknown'
+})
 
 const init = id => {
   if(id !== -1) {
@@ -177,9 +184,9 @@ watch(() => props.id, init, { immediate: true })
           </div>
           <div>
             <span>Operating System</span>
-            <i :style="{color: osNameToIcon(details.base.osName).color}"
-               :class="`fa-brands ${osNameToIcon(details.base.osName).icon}`"></i>
-            <span style="margin-left: 10px">{{`${details.base.osName} ${details.base.osVersion}`}}</span>
+            <i :style="{color: osIcon.color}"
+               :class="`fa-brands ${osIcon.icon}`"></i>
+            <span style="margin-left: 10px">{{ osDisplay }}</span>
           </div>
         </div>
         <div class="title" style="margin-top: 20px">

@@ -1,9 +1,18 @@
 <script setup>
+import {computed} from 'vue'
 import {copyIp, fitByUnit, osNameToIcon, percentageToStatus, rename} from '@/tools'
 
 const props = defineProps({
   data: Object,
   update: Function
+})
+
+const osName = computed(() => props.data?.osName || '')
+const osVersion = computed(() => props.data?.osVersion || '')
+const osIcon = computed(() => osNameToIcon(osName.value))
+const osDisplay = computed(() => {
+  const parts = [osName.value, osVersion.value].filter(Boolean)
+  return parts.length ? parts.join(' ') : 'Unknown'
 })
 </script>
 
@@ -18,9 +27,9 @@ const props = defineProps({
         </div>
         <div class="os">
           OS:
-          <i :style="{color: osNameToIcon(data.osName).color}"
-             :class="`fa-brands ${osNameToIcon(data.osName).icon}`"></i>
-          {{`${data.osName} ${data.osVersion}`}}
+          <i :style="{color: osIcon.color}"
+             :class="`fa-brands ${osIcon.icon}`"></i>
+          {{ osDisplay }}
         </div>
       </div>
       <div class="status" v-if="data.online">
