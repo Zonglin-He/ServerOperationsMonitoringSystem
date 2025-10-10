@@ -97,20 +97,6 @@ const resolveTotal = (primary, fallback) => {
 }
 const memoryTotal = computed(() => resolveTotal(details.base?.memory, details.runtime?.memory))
 const diskTotal = computed(() => resolveTotal(details.base?.disk, details.runtime?.disk))
-const memoryTotal = computed(() => {
-  if(details.runtime?.memory)
-    return details.runtime.memory
-  if(details.base?.memory)
-    return details.base.memory
-  return 0
-})
-const diskTotal = computed(() => {
-  if(details.runtime?.disk)
-    return details.runtime.disk
-  if(details.base?.disk)
-    return details.base.disk
-  return 0
-})
 const memoryUsage = computed(() => now.value?.memoryUsage ?? 0)
 const diskUsage = computed(() => now.value?.diskUsage ?? 0)
 const memoryPercentage = computed(() => {
@@ -129,7 +115,6 @@ const memoryUsageLabel = computed(() => {
   const usage = memoryUsage.value.toFixed(1)
   if(!memoryTotal.value)
     return `${usage} GB / Unknown`
-    return `${usage} GB`
   return `${usage} GB / ${memoryTotal.value.toFixed(1)} GB`
 })
 const diskUsageLabel = computed(() => {
@@ -144,9 +129,6 @@ const memoryCapacityLabel = computed(() => memoryTotal.value
 const diskCapacityLabel = computed(() => diskTotal.value
   ? `${diskTotal.value.toFixed(1)} GB Disk Capacity`
   : 'Unknown Disk Capacity')
-    return `${usage} GB`
-  return `${usage} GB / ${diskTotal.value.toFixed(1)} GB`
-})
 
 const init = id => {
   if(id !== -1) {
@@ -242,9 +224,6 @@ watch(() => props.id, init, { immediate: true })
             <span>{{ memoryCapacityLabel }}</span>
             <i class="fa-solid fa-hard-drive" style="margin-left: 10px"></i>
             <span>{{ diskCapacityLabel }}</span>
-            <span>{{` ${memoryTotal.toFixed(1)} GB Memory Capacity`}}</span>
-            <i class="fa-solid fa-hard-drive" style="margin-left: 10px"></i>
-            <span>{{` ${diskTotal.toFixed(1)} GB Disk Capacity`}}</span>
           </span>
           </div>
           <div>
