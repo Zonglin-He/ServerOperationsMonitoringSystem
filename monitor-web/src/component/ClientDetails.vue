@@ -88,6 +88,15 @@ const osDisplay = computed(() => {
   return parts.length ? parts.join(' ') : 'Unknown'
 })
 const baseLocationClass = computed(() => locationToFlagClass(details.base?.location))
+const resolveTotal = (primary, fallback) => {
+  const first = typeof primary === 'number' ? primary : undefined
+  const second = typeof fallback === 'number' ? fallback : undefined
+  return Number.isFinite(first) && first > 0
+    ? first
+    : (Number.isFinite(second) && second > 0 ? second : 0)
+}
+const memoryTotal = computed(() => resolveTotal(details.base?.memory, details.runtime?.memory))
+const diskTotal = computed(() => resolveTotal(details.base?.disk, details.runtime?.disk))
 const memoryTotal = computed(() => {
   if(details.runtime?.memory)
     return details.runtime.memory
@@ -119,12 +128,22 @@ const diskPercentage = computed(() => {
 const memoryUsageLabel = computed(() => {
   const usage = memoryUsage.value.toFixed(1)
   if(!memoryTotal.value)
+    return `${usage} GB / Unknown`
     return `${usage} GB`
   return `${usage} GB / ${memoryTotal.value.toFixed(1)} GB`
 })
 const diskUsageLabel = computed(() => {
   const usage = diskUsage.value.toFixed(1)
   if(!diskTotal.value)
+    return `${usage} GB / Unknown`
+  return `${usage} GB / ${diskTotal.value.toFixed(1)} GB`
+})
+const memoryCapacityLabel = computed(() => memoryTotal.value
+  ? `${memoryTotal.value.toFixed(1)} GB Memory Capacity`
+  : 'Unknown Memory Capacity')
+const diskCapacityLabel = computed(() => diskTotal.value
+  ? `${diskTotal.value.toFixed(1)} GB Disk Capacity`
+  : 'Unknown Disk Capacity')
     return `${usage} GB`
   return `${usage} GB / ${diskTotal.value.toFixed(1)} GB`
 })
@@ -220,6 +239,9 @@ watch(() => props.id, init, { immediate: true })
             <i class="fa-solid fa-microchip"></i>
             <span style="margin-right: 10px">{{` ${details.base.cpuCore} CPU Cores /`}}</span>
             <i class="fa-solid fa-memory"></i>
+            <span>{{ memoryCapacityLabel }}</span>
+            <i class="fa-solid fa-hard-drive" style="margin-left: 10px"></i>
+            <span>{{ diskCapacityLabel }}</span>
             <span>{{` ${memoryTotal.toFixed(1)} GB Memory Capacity`}}</span>
             <i class="fa-solid fa-hard-drive" style="margin-left: 10px"></i>
             <span>{{` ${diskTotal.toFixed(1)} GB Disk Capacity`}}</span>
