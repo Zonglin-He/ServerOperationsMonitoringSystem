@@ -33,7 +33,17 @@ public class MonitorUtils {
         HardwareAbstractionLayer hardware = info.getHardware();
         double memory = hardware.getMemory().getTotal() / 1024.0 / 1024 /1024;
         double diskSize = Arrays.stream(File.listRoots()).mapToLong(File::getTotalSpace).sum() / 1024.0 / 1024 / 1024;
-        String ip = Objects.requireNonNull(this.findNetworkInterface(hardware)).getIPv4addr()[0];
+
+        // 安全地获取IP地址
+        String ip = "Unknown"; // 默认值
+        NetworkIF networkIF = this.findNetworkInterface(hardware);
+        if (networkIF != null) {
+            String[] ipv4Addresses = networkIF.getIPv4addr();
+            if (ipv4Addresses != null && ipv4Addresses.length > 0) {
+                ip = ipv4Addresses[0];
+            }
+        }
+
         return new BaseDetail()
                 .setOsArch(properties.getProperty("os.arch"))
                 .setOsName(os.getFamily())
@@ -45,6 +55,7 @@ public class MonitorUtils {
                 .setDisk(diskSize)
                 .setIp(ip);
     }
+
 
     public RuntimeDetail monitorRuntimeDetail() {
         double statisticTime = 0.5;

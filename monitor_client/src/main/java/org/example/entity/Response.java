@@ -2,7 +2,7 @@ package org.example.entity;
 
 import com.alibaba.fastjson2.JSONObject;
 
-public record Response(int id, int code, Object data, String message) {
+public record Response(long id, int code, Object data, String message) {
 
     public boolean success(){
         return code == 200;

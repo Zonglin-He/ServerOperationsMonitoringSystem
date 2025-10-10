@@ -54,15 +54,19 @@ public class ServerConfiguration implements ApplicationRunner {
             log.info("Please input token:");
             token = scanner.nextLine();
             List<String> ifs = monitor.listNetworkInterfaceName();
-            if (ifs.size()>=1) {
-                log.info("Detecting that there are multiple Internet cards in your device");
+            log.info("Detected NICs (with IPv4 only): {}", ifs);
+            if (ifs.size() > 1) {
                 do {
-                    log.info("Choose the device need to be monitored:");
-                    ifName = scanner.nextLine();
+                    log.info("Choose the device need to be monitored (one of {}):", ifs);
+                    ifName = scanner.nextLine().trim();
                 } while (!ifs.contains(ifName));
-            }else {
+            } else if (ifs.size() == 1) {
                 ifName = ifs.get(0);
+                log.info("Only one NIC found, use: {}", ifName);
+            } else {
+                throw new IllegalStateException("No NIC with IPv4 found");
             }
+
         } while(!net.registerToServer(address, token));
         ConnectionConfig config = new ConnectionConfig(address, token, ifName);
         this.saveConfigurationToFile(config);
