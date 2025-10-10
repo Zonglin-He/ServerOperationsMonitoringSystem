@@ -26,7 +26,11 @@ function percentageToStatus(percentage) {
         return 'exception'
 }
 
+const defaultOsIcon = {icon: 'fa-linux', color: 'grey'}
+
 function osNameToIcon(name) {
+    if(!name)
+        return defaultOsIcon
     if(name.indexOf('Ubuntu') >= 0)
         return {icon: 'fa-ubuntu', color: '#db4c1a'}
     else if(name.indexOf('CentOS') >= 0)
@@ -38,10 +42,12 @@ function osNameToIcon(name) {
     else if(name.indexOf('Debian') >= 0)
         return {icon: 'fa-debian', color: '#a80836'}
     else
-        return {icon: 'fa-linux', color: 'grey'}
+        return defaultOsIcon
 }
 
 function cpuNameToImage(name) {
+    if(!name)
+        return 'Intel.png'
     if(name.indexOf('Apple') >= 0)
         return 'Apple.png'
     else if(name.indexOf('AMD') >= 0)
