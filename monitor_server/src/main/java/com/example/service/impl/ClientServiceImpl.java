@@ -100,8 +100,7 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
     public List<ClientPreviewVO> listClients() {
         return clientIdCache.values().stream().map(client -> {
             ClientPreviewVO vo = client.asViewObject(ClientPreviewVO.class);
-            // 添加null检查，避免BeanUtils.copyProperties抛出异常
-            Object detail = detailMapper.selectById(vo.getId());
+            ClientDetail detail = detailMapper.selectById(vo.getId());
             if (detail != null) {
                 BeanUtils.copyProperties(detail, vo);
             }
@@ -123,8 +122,15 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
 
     @Override
     public ClientDetailsVO clientDetails(int clientId) {
-        ClientDetailsVO vo = this.clientIdCache.get(clientId).asViewObject(ClientDetailsVO.class);
-        BeanUtils.copyProperties(detailMapper.selectById(clientId), vo);
+        Client client = this.clientIdCache.get(clientId);
+        if (client == null) {
+            return null;
+        }
+        ClientDetailsVO vo = client.asViewObject(ClientDetailsVO.class);
+        ClientDetail detail = detailMapper.selectById(clientId);
+        if (detail != null) {
+            BeanUtils.copyProperties(detail, vo);
+        }
         vo.setOnline(this.isOnline(currentRuntime.get(clientId)));
         return vo;
     }
@@ -145,7 +151,9 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
     public RuntimeHistoryVO clientRuntimeDetailsHistory(int clientId) {
         RuntimeHistoryVO vo = influx.readRuntimeData(clientId);
         ClientDetail detail = detailMapper.selectById(clientId);
-        BeanUtils.copyProperties(detail, vo);
+        if (detail != null) {
+            BeanUtils.copyProperties(detail, vo);
+        }
         return vo;
     }
 
@@ -193,7 +201,9 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
         } else {
             vo = ssh.asViewObject(SshSettingsVO.class);
         }
-        vo.setIp(detail.getIp());
+        if (detail != null) {
+            vo.setIp(detail.getIp());
+        }
         return vo;
     }
 
