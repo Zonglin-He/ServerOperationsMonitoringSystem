@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class ClientPreviewVO {
-    int id;
+    Integer id;
     boolean online;
     String name;
     String location;

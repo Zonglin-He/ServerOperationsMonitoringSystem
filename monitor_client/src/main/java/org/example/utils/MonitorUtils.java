@@ -33,7 +33,8 @@ public class MonitorUtils {
         HardwareAbstractionLayer hardware = info.getHardware();
         double memory = hardware.getMemory().getTotal() / 1024.0 / 1024 /1024;
         double diskSize = Arrays.stream(File.listRoots()).mapToLong(File::getTotalSpace).sum() / 1024.0 / 1024 / 1024;
-        String ip = Objects.requireNonNull(this.findNetworkInterface(hardware)).getIPv4addr()[0];
+        String ip = resolvePrimaryIp(hardware);
+
         return new BaseDetail()
                 .setOsArch(properties.getProperty("os.arch"))
                 .setOsName(os.getFamily())
@@ -128,5 +129,49 @@ public class MonitorUtils {
                 .stream()
                 .map(NetworkIF::getName)
                 .toList();
+    }
+
+    private String resolvePrimaryIp(HardwareAbstractionLayer hardware) {
+        // 如果你有“优先网卡”的配置，可以先用原来的 findNetworkInterface(hardware)
+        NetworkIF preferred = this.findNetworkInterface(hardware);
+        String ip = pickValidIpFrom(preferred);
+        if (ip != null) return ip;
+
+        // 回退：扫描所有网卡，拿第一个有效地址
+        for (NetworkIF nif : hardware.getNetworkIFs()) {
+            String candidate = pickValidIpFrom(nif);
+            if (candidate != null) return candidate;
+        }
+        return "unknown"; // 或者返回 "127.0.0.1" / 空串，按你的业务需要
+    }
+
+    private String pickValidIpFrom(NetworkIF nif) {
+        if (nif == null) return null;
+        try {
+            // 刷新一次网卡信息，确保拿到最新地址
+            nif.updateAttributes();
+        } catch (Throwable ignore) {}
+
+        String[] v4 = nif.getIPv4addr();
+        if (v4 != null && v4.length > 0) {
+            for (String s : v4) {
+                if (isGoodIPv4(s)) return s;
+            }
+        }
+        String[] v6 = nif.getIPv6addr();
+        if (v6 != null && v6.length > 0) {
+            for (String s : v6) {
+                if (s != null && !s.isBlank()) return s;
+            }
+        }
+        return null;
+    }
+
+    private boolean isGoodIPv4(String ip) {
+        if (ip == null || ip.isBlank()) return false;
+        if (ip.startsWith("127.")) return false;         // loopback
+        if (ip.equals("0.0.0.0")) return false;          // 未分配
+        if (ip.startsWith("169.254.")) return false;     // APIPA
+        return true;
     }
 }

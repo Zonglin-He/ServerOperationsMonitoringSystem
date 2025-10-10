@@ -1,1 +1,6 @@
-spring.application.name=monitor_client
+spring:
+  quartz:
+    auto-startup: true
+    overwrite-existing-jobs: true
+    startup-delay: 0s          # 想稍等环境就改成 3s 之类
+    job-store-type: memory
