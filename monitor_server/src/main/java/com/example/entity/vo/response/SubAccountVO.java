@@ -1,14 +1,12 @@
 package com.example.entity.vo.response;
 
+import com.alibaba.fastjson2.JSONArray;
 import lombok.Data;
 
-import java.util.Date;
-
 @Data
-public class AccountVO {
+public class SubAccountVO {
+    int id;
     String username;
     String email;
-    String role;
-    String avatar;
-    Date registerTime;
+    JSONArray clientList;
 }

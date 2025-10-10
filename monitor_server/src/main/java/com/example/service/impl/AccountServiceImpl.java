@@ -1,9 +1,11 @@
 package com.example.service.impl;
 
+import com.alibaba.fastjson2.JSONArray;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.entity.dto.Account;
 import com.example.entity.vo.request.*;
+import com.example.entity.vo.response.SubAccountVO;
 import com.example.mapper.AccountMapper;
 import com.example.service.AccountService;
 import com.example.utils.Const;
@@ -18,10 +20,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -38,6 +37,7 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
 
     @Resource
     PasswordEncoder encoder;
+
     @Autowired
     private PasswordEncoder passwordEncoder;
 
@@ -70,10 +70,7 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
         }
     }
 
-    private boolean verifyLimit(String ip){
-        String key = Const.VERIFY_EMAIL_LIMIT + ip;
-        return utils.limitOnceCheck(key, 60);
-    }
+
 
     public Account findAccountByNameOrEmail(String text){
         return this.query()
@@ -97,16 +94,37 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
     @Override
     public String resetConfirm(ConfirmResetVO vo) {
         String email = vo.getEmail();
-        String code = stringRedisTemplate.opsForValue().get(Const.VERIFY_EMAIL_DATA + email);
+        String code = this.getEmailVerifyCode(email);
         if(code == null) {return "Please get the verification code first";}
         if(!code.equals(vo.getCode())) {return "Wrong verification code, please enter correct code!";}
         return null;
     }
 
+    @Override
+    public void createSubAccount(CreateSubAccountVO vo) {
+        Account account = this.findAccountByNameOrEmail(vo.getEmail());
+        if (account!= null) throw new IllegalArgumentException("This email is already in use!");
+        account = this.findAccountByNameOrEmail(vo.getUsername());
+        if (account!= null) throw new IllegalArgumentException("This username is already in use!");
+        account = new Account(null, vo.getUsername(), passwordEncoder.encode(vo.getPassword())
+        , vo.getEmail(), Const.ROLE_NORMAL, new Date(), JSONArray.copyOf(vo.getClients()).toJSONString());
+        this.save(account);
+    }
 
     @Override
-    public Account findAccountById(int id) {
-        return this.query().eq("id", id).one();
+    public void deleteSubAccount(int uid) {
+        this.removeById(uid);
+    }
+
+    @Override
+    public List<SubAccountVO> listSubAccount() {
+        return this.list(Wrappers.<Account>query().eq("role", Const.ROLE_NORMAL))
+                .stream()
+                .map(account -> {
+                    SubAccountVO vo = account.asViewObject(SubAccountVO.class);
+                    vo.setClientList(JSONArray.parseArray(account.getClients()));
+                    return vo;
+                }).toList();
     }
 
     @Override
@@ -124,7 +142,16 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
                 .update();
         return null;
     }
-
+    @Override
+    public boolean changePassword(int id, String oldPass, String newPass) {
+        Account account = this.getById(id);
+        String password = account.getPassword();
+        if(!passwordEncoder.matches(oldPass, password))
+            return false;
+        this.update(Wrappers.<Account>update().eq("id", id)
+                .set("password", passwordEncoder.encode(newPass)));
+        return true;
+    }
     private String getEmailVerifyCode(String email){
         String key = Const.VERIFY_EMAIL_DATA + email;
         return stringRedisTemplate.opsForValue().get(key);
@@ -135,16 +162,8 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
         stringRedisTemplate.delete(key);
     }
 
-    @Override
-    public String changePassword(int id, ChangePasswordVO vo) {
-        String password = this.query().eq("id", id).one().getPassword();
-        if (passwordEncoder.matches(vo.getPassword(), password)) {return "The original password is incorrect! " +
-                "Please enter again.";}
-        boolean success = this.update()
-                .eq("id", id)
-                .set("password", passwordEncoder
-                        .encode(vo.getNew_password()))
-                .update();
-        return success ? null : "Wrong! Please contact administrator" ;
+    private boolean verifyLimit(String ip){
+        String key = Const.VERIFY_EMAIL_LIMIT + ip;
+        return utils.limitOnceCheck(key, 60);
     }
 }
