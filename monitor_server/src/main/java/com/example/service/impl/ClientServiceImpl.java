@@ -98,14 +98,17 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
 
     @Override
     public List<ClientPreviewVO> listClients() {
-        return clientIdCache.values().stream().map(client -> {
+        return clientIdCache.values().stream()
+                .filter(Objects::nonNull)
+                .map(client -> {
             ClientPreviewVO vo = client.asViewObject(ClientPreviewVO.class);
-            ClientDetail detail = detailMapper.selectById(vo.getId());
+            int clientId = client.getId();
+            ClientDetail detail = detailMapper.selectById(clientId);
             if (detail != null) {
                 BeanUtils.copyProperties(detail, vo);
             }
-            RuntimeDetailVO runtime = currentRuntime.get(client.getId());
-            if (this.isOnline(runtime)) {
+            RuntimeDetailVO runtime = currentRuntime.get(clientId);
+            if (runtime != null && this.isOnline(runtime)) {
                 BeanUtils.copyProperties(runtime, vo);
                 vo.setOnline(true);
             }

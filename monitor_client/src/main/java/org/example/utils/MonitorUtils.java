@@ -32,15 +32,20 @@ public class MonitorUtils {
         OperatingSystem os = info.getOperatingSystem();
         HardwareAbstractionLayer hardware = info.getHardware();
         double memory = hardware.getMemory().getTotal() / 1024.0 / 1024 /1024;
-        double diskSize = Arrays.stream(File.listRoots()).mapToLong(File::getTotalSpace).sum() / 1024.0 / 1024 / 1024;
+        File[] roots = File.listRoots();
+        double diskSize = roots == null ? 0 : Arrays.stream(roots).mapToLong(File::getTotalSpace).sum() / 1024.0 / 1024 / 1024;
 
         // 安全地获取IP地址
         String ip = "Unknown"; // 默认值
         NetworkIF networkIF = this.findNetworkInterface(hardware);
         if (networkIF != null) {
+            networkIF.updateAttributes();
             String[] ipv4Addresses = networkIF.getIPv4addr();
-            if (ipv4Addresses != null && ipv4Addresses.length > 0) {
-                ip = ipv4Addresses[0];
+            if (ipv4Addresses != null) {
+                ip = Arrays.stream(ipv4Addresses)
+                        .filter(address -> address != null && !address.isBlank())
+                        .findFirst()
+                        .orElse(ip);
             }
         }
 
@@ -61,20 +66,29 @@ public class MonitorUtils {
         double statisticTime = 0.5;
         try {
             HardwareAbstractionLayer hardware = info.getHardware();
-            NetworkIF networkInterface = Objects.requireNonNull(this.findNetworkInterface(hardware));
+            NetworkIF networkInterface = this.findNetworkInterface(hardware);
+            if (networkInterface == null) {
+                return null;
+            }
+            networkInterface.updateAttributes();
             CentralProcessor processor = hardware.getProcessor();
             double upload = networkInterface.getBytesSent(), download = networkInterface.getBytesRecv();
             double read = hardware.getDiskStores().stream().mapToLong(HWDiskStore::getReadBytes).sum();
             double write = hardware.getDiskStores().stream().mapToLong(HWDiskStore::getWriteBytes).sum();
             long[] ticks = processor.getSystemCpuLoadTicks();
             Thread.sleep((long) (statisticTime * 1000));
-            networkInterface = Objects.requireNonNull(this.findNetworkInterface(hardware));
+            networkInterface = this.findNetworkInterface(hardware);
+            if (networkInterface == null) {
+                return null;
+            }
+            networkInterface.updateAttributes();
             upload = (networkInterface.getBytesSent() - upload) / statisticTime;
             download =  (networkInterface.getBytesRecv() - download) / statisticTime;
             read = (hardware.getDiskStores().stream().mapToLong(HWDiskStore::getReadBytes).sum() - read) / statisticTime;
             write = (hardware.getDiskStores().stream().mapToLong(HWDiskStore::getWriteBytes).sum() - write) / statisticTime;
             double memory = (hardware.getMemory().getTotal() - hardware.getMemory().getAvailable()) / 1024.0 / 1024 / 1024;
-            double disk = Arrays.stream(File.listRoots())
+            File[] runtimeRoots = File.listRoots();
+            double disk = runtimeRoots == null ? 0 : Arrays.stream(runtimeRoots)
                     .mapToLong(file -> file.getTotalSpace() - file.getFreeSpace()).sum() / 1024.0 / 1024 / 1024;
             return new RuntimeDetail()
                     .setCpuUsage(this.calculateCpuUsage(processor, ticks))
