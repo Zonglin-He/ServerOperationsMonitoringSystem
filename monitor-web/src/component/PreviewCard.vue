@@ -17,7 +17,7 @@ const props = defineProps({
           <i class="fa-solid fa-pen-to-square interact-item" @click.stop="rename(data.id, data.name, update)"></i>
         </div>
         <div class="os">
-          操作系统:
+          OS:
           <i :style="{color: osNameToIcon(data.osName).color}"
              :class="`fa-brands ${osNameToIcon(data.osName).icon}`"></i>
           {{`${data.osName} ${data.osVersion}`}}
@@ -25,20 +25,20 @@ const props = defineProps({
       </div>
       <div class="status" v-if="data.online">
         <i style="color: #18cb18" class="fa-solid fa-circle-play"></i>
-        <span style="margin-left: 5px">运行中</span>
+        <span style="margin-left: 5px">Online</span>
       </div>
       <div class="status" v-else>
         <i style="color: #8a8a8a" class="fa-solid fa-circle-stop"></i>
-        <span style="margin-left: 5px">离线</span>
+        <span style="margin-left: 5px">Offline</span>
       </div>
     </div>
     <el-divider style="margin: 10px 0"/>
     <div class="network">
-      <span style="margin-right: 10px">公网IP: {{data.ip}}</span>
+      <span style="margin-right: 10px">Public IP: {{data.ip}}</span>
       <i class="fa-solid fa-copy interact-item" @click.stop="copyIp(data.ip)" style="color: dodgerblue"></i>
     </div>
     <div class="cpu">
-      <span style="margin-right: 10px">处理器: {{data.cpuName}}</span>
+      <span style="margin-right: 10px">Processor: {{data.cpuName}}</span>
     </div>
     <div class="hardware">
       <i class="fa-solid fa-microchip"></i>
@@ -52,12 +52,12 @@ const props = defineProps({
                    :percentage="data.cpuUsage * 100" :stroke-width="5" :show-text="false"/>
     </div>
     <div class="progress">
-      <span>内存: <b>{{data.memoryUsage.toFixed(1)}}</b> GB</span>
+      <span>Memory: <b>{{data.memoryUsage.toFixed(1)}}</b> GB</span>
       <el-progress :status="percentageToStatus(data.memoryUsage/data.memory * 100)"
                    :percentage="data.memoryUsage/data.memory * 100" :stroke-width="5" :show-text="false"/>
     </div>
     <div class="network-flow">
-      <div>网络流量</div>
+      <div>Network Traffic</div>
       <div>
         <i class="fa-solid fa-arrow-up"></i>
         <span>{{` ${fitByUnit(data.networkUpload, 'KB')}/s`}}</span>

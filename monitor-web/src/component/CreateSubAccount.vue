@@ -21,9 +21,9 @@ const onValidate = (prop, isValid) => valid.value = isValid
 
 const validateUsername = (rule, value, callback) => {
   if (value === '') {
-    callback(new Error('请输入用户名'))
+    callback(new Error('Please enter a username'))
   } else if(!/^[a-zA-Z0-9\u4e00-\u9fa5]+$/.test(value)){
-    callback(new Error('用户名不能包含特殊字符，只能是中文/英文'))
+    callback(new Error('Username cannot contain special characters; only Chinese/English letters and digits are allowed'))
   } else {
     callback()
   }
@@ -31,16 +31,16 @@ const validateUsername = (rule, value, callback) => {
 
 const rules = {
   username: [
-    { required: true, message: '请输入用户名', trigger: ['blur', 'change'] },
+    { required: true, message: 'Please enter a username', trigger: ['blur', 'change'] },
     { validator: validateUsername, trigger: ['blur', 'change'] },
-    { min: 2, max: 8, message: '用户名的长度必须在2-8个字符之间', trigger: ['blur', 'change'] },
+    { min: 2, max: 8, message: 'Username length must be between 2–8 characters', trigger: ['blur', 'change'] },
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: ['blur', 'change'] },
-    { min: 6, max: 16, message: '密码的长度必须在6-16个字符之间', trigger: ['blur', 'change'] }
+    { required: true, message: 'Please enter a password', trigger: ['blur', 'change'] },
+    { min: 6, max: 16, message: 'Password length must be between 6–16 characters', trigger: ['blur', 'change'] }
   ], email: [
-    { required: true, message: '请输入邮件地址', trigger: ['blur', 'change'] },
-    {type: 'email', message: '请输入合法的电子邮件地址', trigger: ['blur', 'change']}
+    { required: true, message: 'Please enter an email address', trigger: ['blur', 'change'] },
+    {type: 'email', message: 'Please enter a valid email address', trigger: ['blur', 'change']}
   ]
 }
 
@@ -57,7 +57,7 @@ const onCheck = (state, id) => {
 function createSubAccount() {
   formRef.value.validate(isValid => {
     if(checkedClients.length === 0) {
-      ElMessage.warning('请至少选择一个服务器用于子账户进行管理')
+      ElMessage.warning('Please select at least one server for the sub-account to manage')
       return
     }
     if(isValid) {
@@ -65,7 +65,7 @@ function createSubAccount() {
         ...form,
         clients: checkedClients
       }, () => {
-        ElMessage.success('子账户创建成功！')
+        ElMessage.success('Sub-account created successfully!')
         emits('create')
       })
     }
@@ -78,29 +78,29 @@ function createSubAccount() {
     <div style="display: flex;flex-direction: column;height: 100%">
       <div>
         <div class="title">
-          <i class="fa-solid fa-user-plus"></i> 添加新的子账户
+          <i class="fa-solid fa-user-plus"></i> Add New Sub-Account
         </div>
-        <div class="desc">子账户同样用于管理服务器，但是可以自由分配指定的服务器，子账户只能访问被分配到的服务器。</div>
+        <div class="desc">Sub-accounts also manage servers, but you can assign specific servers; sub-accounts can only access the servers assigned to them.</div>
         <el-divider style="margin: 10px 0"/>
       </div>
       <div>
         <el-form label-position="top" :rules="rules" :model="form"
                  @validate="onValidate" ref="formRef">
-          <el-form-item label="用户名" prop="username">
+          <el-form-item label="Username" prop="username">
             <el-input type="text" v-model="form.username"
-                      :prefix-icon="User" placeholder="子账户用户名" maxlength="16"/>
+                      :prefix-icon="User" placeholder="Sub-account username" maxlength="16"/>
           </el-form-item>
-          <el-form-item label="电子邮件" prop="email">
+          <el-form-item label="Email" prop="email">
             <el-input type="email" v-model="form.email"
-                      :prefix-icon="Message" placeholder="子账户电子邮件" maxlength="16"/>
+                      :prefix-icon="Message" placeholder="Sub-account email" maxlength="16"/>
           </el-form-item>
-          <el-form-item label="密码" prop="password">
+          <el-form-item label="Password" prop="password">
             <el-input type="password" v-model="form.password"
-                      :prefix-icon="Lock" placeholder="子账户密码" maxlength="16"/>
+                      :prefix-icon="Lock" placeholder="Sub-account password" maxlength="16"/>
           </el-form-item>
         </el-form>
         <el-divider style="margin: 10px 0"/>
-        <div class="desc">请在下方选择允许子账户访问的服务器列表。</div>
+        <div class="desc">Please select below the list of servers the sub-account is allowed to access.</div>
       </div>
       <el-scrollbar style="flex: 1">
         <div class="client-card" v-for="item in clients">
@@ -111,20 +111,20 @@ function createSubAccount() {
               <span style="margin: 0 10px">{{ item.name }}</span>
             </div>
             <div style="font-size: 12px;color: grey">
-              操作系统:
+              OS:
               <i :style="{color: osNameToIcon(item.osName).color}"
                  :class="`fa-brands ${osNameToIcon(item.osName).icon}`"></i>
               {{`${item.osName} ${item.osVersion}`}}
             </div>
             <div style="font-size: 12px;color: grey">
-              <span style="margin-right: 10px">公网IP: {{item.ip}}</span>
+              <span style="margin-right: 10px">Public IP: {{item.ip}}</span>
             </div>
           </div>
         </div>
       </el-scrollbar>
       <div style="text-align: center;margin-top: 10px">
         <el-button @click="createSubAccount" type="success"
-                   :disabled="!valid" plain>确认创建</el-button>
+                   :disabled="!valid" plain>Create</el-button>
       </div>
     </div>
   </div>

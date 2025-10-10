@@ -15,9 +15,9 @@ const terminalRef = ref()
 const socket = new WebSocket(`ws://127.0.0.1:8080/terminal/${props.id}`)
 socket.onclose = evt => {
   if(evt.code !== 1000) {
-    ElMessage.warning(`连接失败: ${evt.reason}`)
+    ElMessage.warning(`Connection failed: ${evt.reason}`)
   } else {
-    ElMessage.success('远程SSH连接已断开')
+    ElMessage.success('Remote SSH connection closed')
   }
   emits('dispose')
 }
@@ -31,7 +31,7 @@ const term = new Terminal({
   theme: {
     background: '#000000'
   },
-  // 光标闪烁
+  // cursor blinks
   cursorBlink: true,
   cursorStyle: 'underline',
   scrollback: 100,

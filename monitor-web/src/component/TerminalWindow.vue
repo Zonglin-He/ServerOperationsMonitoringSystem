@@ -17,13 +17,13 @@ const connection = reactive({
 
 const rules = {
   port: [
-    { required: true, message: '请输入端口', trigger: ['blur', 'change'] },
+    { required: true, message: 'Please enter a port', trigger: ['blur', 'change'] },
   ],
   username: [
-    { required: true, message: '请输入用户名', trigger: ['blur', 'change'] },
+    { required: true, message: 'Please enter a username', trigger: ['blur', 'change'] },
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: ['blur', 'change'] },
+    { required: true, message: 'Please enter a password', trigger: ['blur', 'change'] },
   ]
 }
 
@@ -54,24 +54,24 @@ watch(() => props.id, id => {
   <div class="terminal-main">
     <div class="login" v-loading="!connection.ip" v-if="state === 1">
       <i style="font-size: 50px" class="fa-solid fa-terminal"></i>
-      <div style="margin-top: 10px;font-weight: bold;font-size: 20px">服务端连接信息</div>
+      <div style="margin-top: 10px;font-weight: bold;font-size: 20px">Server Connection Info</div>
       <el-form style="width: 400px;margin: 20px auto" :model="connection"
                :rules="rules" ref="formRef" label-width="100">
         <div style="display: flex;gap: 10px">
-          <el-form-item style="width: 100%" label="服务器IP地址" prop="ip">
+          <el-form-item style="width: 100%" label="Server IP Address" prop="ip">
             <el-input v-model="connection.ip" disabled/>
           </el-form-item>
           <el-form-item style="width: 80px" prop="port" label-width="0">
-            <el-input placeholder="端口" v-model="connection.port"/>
+            <el-input placeholder="Port" v-model="connection.port"/>
           </el-form-item>
         </div>
-        <el-form-item prop="username" label="登录用户名">
-          <el-input placeholder="请输入用户名..." v-model="connection.username"/>
+        <el-form-item prop="username" label="Login Username">
+          <el-input placeholder="Please enter a username..." v-model="connection.username"/>
         </el-form-item>
-        <el-form-item prop="password" label="登录密码">
-          <el-input placeholder="请输入密码..." type="password" v-model="connection.password"/>
+        <el-form-item prop="password" label="Login Password">
+          <el-input placeholder="Please enter a password..." type="password" v-model="connection.password"/>
         </el-form-item>
-        <el-button type="success" @click="saveConnection" plain>立即连接</el-button>
+        <el-button type="success" @click="saveConnection" plain>Connect Now</el-button>
       </el-form>
     </div>
     <div v-if="state === 2">

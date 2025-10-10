@@ -12,11 +12,11 @@ const accessHeader = () => {
 
 const defaultError = (error) => {
     console.error(error)
-    ElMessage.error('发生了一些错误，请联系管理员')
+    ElMessage.error('An error occurred. Please contact the administrator.')
 }
 
 const defaultFailure = (message, status, url) => {
-    console.warn(`请求地址: ${url}, 状态码: ${status}, 错误信息: ${message}`)
+    console.warn(`Request URL: ${url}, Status: ${status}, Message: ${message}`)
     ElMessage.warning(message)
 }
 
@@ -26,7 +26,7 @@ function takeAccessToken() {
     const authObj = JSON.parse(str)
     if(new Date(authObj.expire) <= new Date()) {
         deleteAccessToken()
-        ElMessage.warning("登录状态已过期，请重新登录！")
+        ElMessage.warning("Login session has expired. Please sign in again!")
         return null
     }
     return authObj.token
@@ -79,7 +79,7 @@ function login(username, password, remember, success, failure = defaultFailure){
         store.user.role = data.role
         store.user.username = data.username
         store.user.email = data.email
-        ElMessage.success(`登录成功，欢迎 ${data.username} 来到我们的系统`)
+        ElMessage.success(`Login successful. Welcome, ${data.username}, to our system.`)
         success(data)
     }, failure)
 }
@@ -91,7 +91,7 @@ function post(url, data, success, failure = defaultFailure) {
 function logout(success, failure = defaultFailure){
     get('/api/auth/logout', () => {
         deleteAccessToken()
-        ElMessage.success(`退出登录成功，欢迎您再次使用`)
+        ElMessage.success(`Logged out successfully. We hope to see you again.`)
         success()
     }, failure)
 }

@@ -7,13 +7,13 @@ import RuntimeHistory from "@/component/RuntimeHistory.vue";
 import {Connection, Delete} from "@element-plus/icons-vue";
 
 const locations = [
-  {name: 'cn', desc: '中国大陆'},
-  {name: 'hk', desc: '香港'},
-  {name: 'jp', desc: '日本'},
-  {name: 'us', desc: '美国'},
-  {name: 'sg', desc: '新加坡'},
-  {name: 'kr', desc: '韩国'},
-  {name: 'de', desc: '德国'}
+  {name: 'cn', desc: 'Mainland China'},
+  {name: 'hk', desc: 'Hong Kong'},
+  {name: 'jp', desc: 'Japan'},
+  {name: 'us', desc: 'United States'},
+  {name: 'sg', desc: 'Singapore'},
+  {name: 'kr', desc: 'South Korea'},
+  {name: 'de', desc: 'Germany'}
 ]
 
 const props = defineProps({
@@ -46,20 +46,20 @@ const submitNodeEdit = () => {
   }, () => {
     details.editNode = false
     updateDetails()
-    ElMessage.success('节点信息已更新')
+    ElMessage.success('Node info updated')
   })
 }
 
 function deleteClient() {
-  ElMessageBox.confirm('删除此主机后所有统计数据都将丢失，您确定要这样做吗？', '删除主机', {
-    confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
+  ElMessageBox.confirm('After deleting this host, all statistics will be lost. Are you sure?', 'Delete Host', {
+    confirmButtonText: 'Confirm',
+    cancelButtonText: 'Cancel',
+    type: 'warning',
   }).then(() => {
     get(`/api/monitor/delete?clientId=${props.id}`, () => {
       emits('delete')
       props.update()
-      ElMessage.success('主机已成功移除')
+      ElMessage.success('Host removed successfully')
     })
   }).catch(() => {})
 }
@@ -99,44 +99,44 @@ watch(() => props.id, init, { immediate: true })
         <div style="display: flex;justify-content: space-between">
           <div class="title">
             <i class="fa-solid fa-server"></i>
-            服务器信息
+            Server Info
           </div>
           <div>
             <el-button :icon="Connection" type="info"
-                       @click="emits('terminal', id)" plain text>SSH远程连接</el-button>
+                       @click="emits('terminal', id)" plain text>SSH Remote Connection</el-button>
             <el-button :icon="Delete" type="danger" style="margin-left: 0"
-                       @click="deleteClient" plain text>删除此主机</el-button>
+                       @click="deleteClient" plain text>Delete Host</el-button>
           </div>
         </div>
         <el-divider style="margin: 10px 0"/>
         <div class="details-list">
           <div>
-            <span>服务器ID</span>
+            <span>Server ID</span>
             <span>{{details.base.id}}</span>
           </div>
           <div>
-            <span>服务器名称</span>
+            <span>Server Name</span>
             <span>{{details.base.name}}</span>&nbsp;
             <i @click.stop="rename(details.base.id, details.base.name, updateDetails)"
                class="fa-solid fa-pen-to-square interact-item"/>
           </div>
           <div>
-            <span>运行状态</span>
+            <span>Status</span>
             <span>
             <i style="color: #18cb18" class="fa-solid fa-circle-play" v-if="details.base.online"></i>
             <i style="color: #18cb18" class="fa-solid fa-circle-stop" v-else></i>
-            {{details.base.online ? '运行中' : '离线'}}
+            {{details.base.online ? 'Online' : 'Offline'}}
           </span>
           </div>
           <div v-if="!details.editNode">
-            <span>服务器节点</span>
+            <span>Server Node</span>
             <span :class="`flag-icon flag-icon-${details.base.location}`"></span>&nbsp;
             <span>{{details.base.node}}</span>&nbsp;
             <i @click.stop="enableNodeEdit"
                class="fa-solid fa-pen-to-square interact-item"/>
           </div>
           <div v-else>
-            <span>服务器节点</span>
+            <span>Server Node</span>
             <div style="display: inline-block;height: 15px">
               <div style="display: flex">
                 <el-select v-model="nodeEdit.location" style="width: 80px" size="small">
@@ -146,7 +146,7 @@ watch(() => props.id, init, { immediate: true })
                   </el-option>
                 </el-select>
                 <el-input v-model="nodeEdit.name" style="margin-left: 10px"
-                          size="small" placeholder="请输入节点名称..."/>
+                          size="small" placeholder="Please enter node name..."/>
                 <div style="margin-left: 10px">
                   <i @click.stop="submitNodeEdit" class="fa-solid fa-check interact-item"/>
                 </div>
@@ -154,29 +154,29 @@ watch(() => props.id, init, { immediate: true })
             </div>
           </div>
           <div>
-            <span>公网IP地址</span>
+            <span>Public IP Address</span>
             <span>
             {{details.base.ip}}
             <i class="fa-solid fa-copy interact-item" style="color: dodgerblue" @click.stop="copyIp(details.base.ip)"></i>
           </span>
           </div>
           <div style="display: flex">
-            <span>处理器</span>
+            <span>Processor</span>
             <span>{{details.base.cpuName}}</span>
             <el-image style="height: 20px;margin-left: 10px"
                       :src="`/cpu-icons/${cpuNameToImage(details.base.cpuName)}`"/>
           </div>
           <div>
-            <span>硬件配置信息</span>
+            <span>Hardware Configuration</span>
             <span>
             <i class="fa-solid fa-microchip"></i>
-            <span style="margin-right: 10px">{{` ${details.base.cpuCore} CPU 核心数 /`}}</span>
+            <span style="margin-right: 10px">{{` ${details.base.cpuCore} CPU Cores /`}}</span>
             <i class="fa-solid fa-memory"></i>
-            <span>{{` ${details.base.memory.toFixed(1)} GB 内存容量`}}</span>
+            <span>{{` ${details.base.memory.toFixed(1)} GB Memory Capacity`}}</span>
           </span>
           </div>
           <div>
-            <span>操作系统</span>
+            <span>Operating System</span>
             <i :style="{color: osNameToIcon(details.base.osName).color}"
                :class="`fa-brands ${osNameToIcon(details.base.osName).icon}`"></i>
             <span style="margin-left: 10px">{{`${details.base.osName} ${details.base.osVersion}`}}</span>
@@ -184,7 +184,7 @@ watch(() => props.id, init, { immediate: true })
         </div>
         <div class="title" style="margin-top: 20px">
           <i class="fa-solid fa-gauge-high"></i>
-          实时监控
+          Real-time Monitoring
         </div>
         <el-divider style="margin: 10px 0"/>
         <div v-if="details.base.online" v-loading="!details.runtime.list.length"
@@ -198,12 +198,12 @@ watch(() => props.id, init, { immediate: true })
             <el-progress style="margin-left: 20px" type="dashboard" :width="100"
                          :percentage="now.memoryUsage / details.runtime.memory * 100"
                          :status="percentageToStatus(now.memoryUsage / details.runtime.memory * 100)">
-              <div style="font-size: 16px;font-weight: bold;color: initial">内存</div>
+              <div style="font-size: 16px;font-weight: bold;color: initial">Memory</div>
               <div style="font-size: 13px;color: grey;margin-top: 5px">{{ (now.memoryUsage).toFixed(1) }} GB</div>
             </el-progress>
             <div style="flex: 1;margin-left: 30px;display: flex;flex-direction: column;height: 80px">
               <div style="flex: 1;font-size: 14px">
-                <div>实时网络速度</div>
+                <div>Real-time Network Speed</div>
                 <div>
                   <i style="color: orange" class="fa-solid fa-arrow-up"></i>
                   <span>{{` ${fitByUnit(now.networkUpload, 'KB')}/s`}}</span>
@@ -216,7 +216,7 @@ watch(() => props.id, init, { immediate: true })
                 <div style="font-size: 13px;display: flex;justify-content: space-between">
                   <div>
                     <i class="fa-solid fa-hard-drive"></i>
-                    <span> 磁盘总容量</span>
+                    <span> Total Disk Capacity</span>
                   </div>
                   <div>{{now.diskUsage.toFixed(1)}} GB / {{details.runtime.disk.toFixed(1)}} GB</div>
                 </div>
@@ -228,7 +228,7 @@ watch(() => props.id, init, { immediate: true })
           </div>
           <runtime-history style="margin-top: 20px" :data="details.runtime.list"/>
         </div>
-        <el-empty description="服务器处于离线状态，请检查服务器是否正常运行" v-else/>
+        <el-empty description="Server is offline. Please check if it is running properly." v-else/>
       </div>
     </div>
   </el-scrollbar>

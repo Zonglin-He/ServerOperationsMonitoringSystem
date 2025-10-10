@@ -12,8 +12,8 @@
                    :inactive-action-icon="Sunny"/>
         <div style="text-align: right;line-height: 16px;margin-right: 10px">
           <div>
-            <el-tag type="success" v-if="store.isAdmin" size="small">管理员</el-tag>
-            <el-tag v-else size="small">子账户</el-tag>
+            <el-tag type="success" v-if="store.isAdmin" size="small">Admin</el-tag>
+            <el-tag v-else size="small">Sub-account</el-tag>
             {{store.user.username}}
           </div>
           <div style="font-size: 13px;color: grey">{{store.user.email}}</div>
@@ -25,7 +25,7 @@
             <el-dropdown-menu>
               <el-dropdown-item @click="userLogout">
                 <el-icon><Back/></el-icon>
-                退出登录
+                Log out
               </el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -59,8 +59,8 @@ const store = useStore()
 const route = useRoute()
 const dark = ref(useDark())
 const tabs = [
-  {id: 1, name: '管理', route: 'manage'},
-  {id: 2, name: '安全', route: 'security'}
+  {id: 1, name: 'Manage', route: 'manage'},
+  {id: 2, name: 'Security', route: 'security'}
 ]
 const defaultIndex = () => {
   for (let tab of tabs) {

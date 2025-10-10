@@ -10,13 +10,13 @@ import {useStore} from "@/store";
 import TerminalWindow from "@/component/TerminalWindow.vue";
 
 const locations = [
-  {name: 'cn', desc: '中国大陆'},
-  {name: 'hk', desc: '香港'},
-  {name: 'jp', desc: '日本'},
-  {name: 'us', desc: '美国'},
-  {name: 'sg', desc: '新加坡'},
-  {name: 'kr', desc: '韩国'},
-  {name: 'de', desc: '德国'}
+  {name: 'cn', desc: 'Mainland China'},
+  {name: 'hk', desc: 'Hong Kong'},
+  {name: 'jp', desc: 'Japan'},
+  {name: 'us', desc: 'United States'},
+  {name: 'sg', desc: 'Singapore'},
+  {name: 'kr', desc: 'South Korea'},
+  {name: 'de', desc: 'Germany'}
 ]
 const checkedNodes = ref([])
 
@@ -71,12 +71,12 @@ const terminal = reactive({
   <div class="manage-main">
     <div style="display: flex;justify-content: space-between;align-items: end">
       <div>
-        <div class="title"><i class="fa-solid fa-server"></i> 管理主机列表</div>
-        <div class="desc">在这里管理所有已经注册的主机实例，实时监控主机运行状态，快速进行管理和操作。</div>
+        <div class="title"><i class="fa-solid fa-server"></i> Manage Hosts</div>
+        <div class="desc">Manage all registered host instances here, monitor their status in real time, and operate quickly.</div>
       </div>
       <div>
         <el-button :icon="Plus" type="primary" plain :disabled="!store.isAdmin"
-                   @click="register.show = true">添加新主机</el-button>
+                   @click="register.show = true">Add New Host</el-button>
       </div>
     </div>
     <el-divider style="margin: 10px 0"/>
@@ -92,7 +92,7 @@ const terminal = reactive({
       <preview-card v-for="item in clientList" :data="item" :update="updateList"
                     @click="displayClientDetails(item.id)"/>
     </div>
-    <el-empty description="还没有任何主机哦，点击右上角添加一个吧" v-else/>
+    <el-empty description="No hosts yet. Click the top-right button to add one." v-else/>
     <el-drawer size="520" :show-close="false" v-model="detail.show"
                :with-header="false" v-if="list.length" @close="detail.id = -1">
       <client-details :id="detail.id" :update="updateList" @delete="updateList" @terminal="openTerminal"/>
@@ -106,9 +106,9 @@ const terminal = reactive({
                v-model="terminal.show" :close-on-click-modal="false">
       <template #header>
         <div>
-          <div style="font-size: 18px;color: dodgerblue;font-weight: bold;">SSH远程连接</div>
+          <div style="font-size: 18px;color: dodgerblue;font-weight: bold;">SSH Remote Connection</div>
           <div style="font-size: 14px">
-            远程连接的建立将由服务端完成，因此在内网环境下也可以正常使用。
+            The remote connection is established by the server, so it works inside private networks as well.
           </div>
         </div>
       </template>
