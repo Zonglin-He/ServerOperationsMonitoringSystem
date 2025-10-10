@@ -67,6 +67,13 @@ const rules = {
 function userLogin() {
   formRef.value.validate((isValid) => {
     if(isValid) {
+      const normalizedUsername = form.username.trim()
+      if(!normalizedUsername) {
+        form.username = ''
+        formRef.value.validateField('username')
+        return
+      }
+      form.username = normalizedUsername
       login(form.username, form.password, form.remember, () => router.push("/index"))
     }
   });
