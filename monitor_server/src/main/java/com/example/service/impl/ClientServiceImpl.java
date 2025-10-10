@@ -99,37 +99,16 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
     @Override
     public List<ClientPreviewVO> listClients() {
         return clientIdCache.values().stream().map(client -> {
-            // 1) 先把 Client 转成 VO
             ClientPreviewVO vo = client.asViewObject(ClientPreviewVO.class);
-
-            // 2) 确保 ID 有值（有些转换器不会把 id 映射过去）
-            Integer id = client.getId();
-            if (vo.getId() == null) {
-                vo.setId(id);
-            }
-
-            // 3) 查详情：允许查不到就不拷贝，避免 BeanUtils 抛异常
-            var detail = detailMapper.selectById(id); // 别用 vo.getId()，以防它是 null
-            if (detail != null) {
-                BeanUtils.copyProperties(detail, vo);
-            } else {
-                // 冷启动/首次上报还没入库时很正常
-                // log.warn("No detail record found for clientId={}", id);
-            }
-
-            // 4) 覆盖运行时信息：同样判空并设置在线标记
-            RuntimeDetailVO runtime = currentRuntime.get(id);
-            if (runtime != null && this.isOnline(runtime)) {
+            BeanUtils.copyProperties(detailMapper.selectById(vo.getId()), vo);
+            RuntimeDetailVO runtime = currentRuntime.get(client.getId());
+            if (this.isOnline(runtime)) {
                 BeanUtils.copyProperties(runtime, vo);
                 vo.setOnline(true);
-            } else {
-                vo.setOnline(false);
             }
-
             return vo;
         }).toList();
     }
-
 
     @Override
     public void renameClient(RenameClientVO vo) {
