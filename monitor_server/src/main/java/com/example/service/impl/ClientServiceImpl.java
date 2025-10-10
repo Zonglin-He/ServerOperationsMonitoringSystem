@@ -28,6 +28,9 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
 
     private final Map<Integer, Client> clientIdCache = new ConcurrentHashMap<>();
     private final Map<String, Client> clientTokenCache = new ConcurrentHashMap<>();
+    private final Object cacheLock = new Object();
+    private volatile long cachedClientCount = 0;
+    private volatile long lastCacheSyncTime = 0;
 
     @Resource
     ClientDetailMapper detailMapper;
@@ -40,9 +43,7 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
 
     @PostConstruct
     public void initClientCache() {
-        clientTokenCache.clear();
-        clientIdCache.clear();
-        this.list().forEach(this::addClientCache);
+        this.refreshClientCache();
     }
 
     @Override
@@ -58,7 +59,9 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
             Client client = new Client(id, "Unnamed device", token, "cn", "Unnamed node", new Date());
             if (this.save(client)){
                 registerToken = this.generateNewToken();
-                this.addClientCache(client);
+                this.cacheClient(client);
+                cachedClientCount = clientIdCache.size();
+                lastCacheSyncTime = System.currentTimeMillis();
                 return true;
             }
         }
@@ -67,11 +70,13 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
 
     @Override
     public Client findClientById(int id) {
+        this.ensureClientCacheReady();
         return clientIdCache.get(id);
     }
 
     @Override
     public Client findClientByToken(String token) {
+        this.ensureClientCacheReady();
         return clientTokenCache.get(token);
     }
 
@@ -98,6 +103,7 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
 
     @Override
     public List<ClientPreviewVO> listClients() {
+        this.ensureClientCacheReady();
         return clientIdCache.values().stream().map(client -> {
             ClientPreviewVO vo = client.asViewObject(ClientPreviewVO.class);
             ClientDetail detail = detailMapper.selectById(vo.getId());
@@ -117,11 +123,12 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
     @Override
     public void renameClient(RenameClientVO vo) {
         this.update(Wrappers.<Client>update().eq("id", vo.getId()).set("name", vo.getName()));
-        this.initClientCache();
+        this.refreshClientCache();
     }
 
     @Override
     public ClientDetailsVO clientDetails(int clientId) {
+        this.ensureClientCacheReady();
         Client client = this.clientIdCache.get(clientId);
         if (client == null) {
             return null;
@@ -139,7 +146,7 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
     public void renameNode(RenameNodeVO vo) {
         this.update(Wrappers.<Client>update().eq("id", vo.getId()).set("node", vo.getNode())
                 .set("location", vo.getLocation()));
-        this.initClientCache();
+        this.refreshClientCache();
     }
 
     @Override
@@ -161,12 +168,13 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
     public void deleteClient(int clientId) {
         this.removeById(clientId);
         detailMapper.deleteById(clientId);
-        this.initClientCache();
+        this.refreshClientCache();
         currentRuntime.remove(clientId);
     }
 
     @Override
     public List<ClientSimpleVO> listSimpleList() {
+        this.ensureClientCacheReady();
         return clientIdCache.values().stream().map(client -> {
             ClientSimpleVO vo = client.asViewObject(ClientSimpleVO.class);
             ClientDetail detail = detailMapper.selectById(vo.getId());
@@ -180,6 +188,7 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
 
     @Override
     public void saveClientSshConnection(SshConnectionVO vo) {
+        this.ensureClientCacheReady();
         Client client = clientIdCache.get(vo.getId());
         if (client == null) {return;}
         ClientSsh ssh = new ClientSsh();
@@ -211,9 +220,36 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
         return runtime != null && System.currentTimeMillis() - runtime.getTimestamp() < 60 * 1000;
     }
 
-    private Map<Integer, RuntimeDetailVO> currentRuntime = new ConcurrentHashMap<>();
+    private final Map<Integer, RuntimeDetailVO> currentRuntime = new ConcurrentHashMap<>();
 
-    private void addClientCache(Client client) {
+    private void refreshClientCache() {
+        synchronized (cacheLock) {
+            clientTokenCache.clear();
+            clientIdCache.clear();
+            this.list().forEach(this::cacheClient);
+            cachedClientCount = clientIdCache.size();
+            lastCacheSyncTime = System.currentTimeMillis();
+        }
+    }
+
+    private void ensureClientCacheReady() {
+        if (clientIdCache.isEmpty()) {
+            this.refreshClientCache();
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastCacheSyncTime < 30_000) {
+            return;
+        }
+        long dbCount = this.count();
+        if (cachedClientCount != dbCount) {
+            this.refreshClientCache();
+        } else {
+            lastCacheSyncTime = now;
+        }
+    }
+
+    private void cacheClient(Client client) {
         clientIdCache.put(client.getId(), client);
         clientTokenCache.put(client.getToken(), client);
     }

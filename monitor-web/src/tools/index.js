@@ -29,6 +29,13 @@ function percentageToStatus(percentage) {
 const defaultOsIcon = {icon: 'fa-linux', color: 'grey'}
 const defaultFlagClass = 'flag-icon flag-icon-xx'
 const supportedLocations = new Set(['cn', 'hk', 'jp', 'us', 'sg', 'kr', 'de'])
+const locationAlias = new Map([
+    ['usa', 'us'],
+    ['united states', 'us'],
+    ['america', 'us'],
+    ['sgp', 'sg'],
+    ['singapore', 'sg']
+])
 
 function osNameToIcon(name) {
     if(!name)
@@ -58,16 +65,45 @@ function cpuNameToImage(name) {
         return 'Intel.png'
 }
 
+function resolveFlagCode(code) {
+    const normalized = String(code).trim().toLowerCase()
+    if(!normalized)
+        return undefined
+
+    if(supportedLocations.has(normalized))
+        return normalized
+
+    if(locationAlias.has(normalized))
+        return locationAlias.get(normalized)
+
+    const tokens = normalized.split(/[^a-z]/).filter(Boolean)
+    for (const token of tokens) {
+        if(supportedLocations.has(token))
+            return token
+        if(locationAlias.has(token))
+            return locationAlias.get(token)
+    }
+
+    if(normalized.length === 3) {
+        const iso2 = locationAlias.get(normalized)
+        if(iso2)
+            return iso2
+    }
+
+    if(normalized.length > 2) {
+        const prefix = normalized.substring(0, 2)
+        if(supportedLocations.has(prefix))
+            return prefix
+    }
+
+    return undefined
+}
+
 function locationToFlagClass(code) {
     if(!code)
         return defaultFlagClass
-    const normalized = String(code).trim().toLowerCase()
-    if(supportedLocations.has(normalized))
-        return `flag-icon flag-icon-${normalized}`
-    const suffixMatch = normalized.match(/[a-z]{2}$/)
-    if(suffixMatch && supportedLocations.has(suffixMatch[0]))
-        return `flag-icon flag-icon-${suffixMatch[0]}`
-    return defaultFlagClass
+    const result = resolveFlagCode(code)
+    return result ? `flag-icon flag-icon-${result}` : defaultFlagClass
 }
 
 const { copy } = useClipboard()
