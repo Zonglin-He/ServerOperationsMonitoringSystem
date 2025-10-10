@@ -2,7 +2,9 @@ package com.example.filter;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.example.entity.RestBean;
+import com.example.entity.dto.Account;
 import com.example.entity.dto.Client;
+import com.example.service.AccountService;
 import com.example.service.ClientService;
 import com.example.utils.Const;
 import com.example.utils.JwtUtils;
@@ -36,33 +38,52 @@ public class JWTAuthorizeFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String authorization = request.getHeader("Authorization");
         String uri = request.getRequestURI();
-        if (uri.startsWith("/monitor")){
-            if (!uri.endsWith("/register")){
+        if(uri.startsWith("/monitor")) {
+            if(!uri.endsWith("/register")) {
                 Client client = service.findClientByToken(authorization);
-                if (client == null){
+                if(client == null) {
                     response.setStatus(401);
-                    response.getWriter().write(RestBean.failure(401, "Have not registered").
-                            asJsonString());
+                    response.setCharacterEncoding("utf-8");
+                    response.getWriter().write(RestBean.failure(401, "Have not registered").asJsonString());
                     return;
-                }
-                else{
+                } else {
                     request.setAttribute(Const.ATTR_CLIENT, client);
                 }
             }
-        }
-        else{
+        } else {
             DecodedJWT jwt = utils.resolveJwt(authorization);
-            if (jwt != null) {
+            if(jwt != null) {
                 UserDetails user = utils.toUser(jwt);
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
                 request.setAttribute(Const.ATTR_USER_ID, utils.toId(jwt));
-                request.setAttribute(Const.ATTR_USER_ROLE, new ArrayList<>(
-                        user.getAuthorities()).get(0).getAuthority());
+                request.setAttribute(Const.ATTR_USER_ROLE, new ArrayList<>(user.getAuthorities()).get(0).getAuthority());
+
+                if(request.getRequestURI().startsWith("/terminal/") && !accessShell(
+                        (int) request.getAttribute(Const.ATTR_USER_ID),
+                        (String) request.getAttribute(Const.ATTR_USER_ROLE),
+                        Integer.parseInt(request.getRequestURI().substring(10)))) {
+                    response.setStatus(401);
+                    response.setCharacterEncoding("utf-8");
+                    response.getWriter().write(RestBean.failure(401, "Can not access").asJsonString());
+                    return;
+                }
             }
         }
         filterChain.doFilter(request, response);
+    }
+
+    @Resource
+    AccountService accountService;
+
+    private boolean accessShell(int userId, String userRole, int clientId) {
+        if(Const.ROLE_ADMIN.equals(userRole.substring(5))) {
+            return true;
+        } else {
+            Account account = accountService.getById(userId);
+            return account.getClientList().contains(clientId);
+        }
     }
 }
