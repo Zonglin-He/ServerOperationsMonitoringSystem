@@ -62,8 +62,7 @@ spring:
     username: 'minioadmin'
     password: 'StrongPassw0rd!'
 
-  weather:
-    key: ad4395f106234352855ae89861543a9c
+
 
 logging:
   level:

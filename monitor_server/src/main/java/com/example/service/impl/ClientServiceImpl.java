@@ -6,8 +6,11 @@ import com.example.entity.dto.Client;
 import com.example.entity.dto.ClientDetail;
 import com.example.entity.vo.request.ClientDetailVO;
 import com.example.entity.vo.request.RenameClientVO;
+import com.example.entity.vo.request.RenameNodeVO;
 import com.example.entity.vo.request.RuntimeDetailVO;
+import com.example.entity.vo.response.ClientDetailsVO;
 import com.example.entity.vo.response.ClientPreviewVO;
+import com.example.entity.vo.response.RuntimeHistoryVO;
 import com.example.mapper.ClientDetailMapper;
 import com.example.mapper.ClientMapper;
 import com.example.service.ClientService;
@@ -37,6 +40,8 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
 
     @PostConstruct
     public void initClientCache() {
+        clientTokenCache.clear();
+        clientIdCache.clear();
         this.list().forEach(this::addClientCache);
     }
 
@@ -97,7 +102,7 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
             ClientPreviewVO vo = client.asViewObject(ClientPreviewVO.class);
             BeanUtils.copyProperties(detailMapper.selectById(vo.getId()), vo);
             RuntimeDetailVO runtime = currentRuntime.get(client.getId());
-            if (runtime != null && System.currentTimeMillis() - runtime.getTimestamp() < 60 * 1000) {
+            if (this.isOnline(runtime)) {
                 BeanUtils.copyProperties(runtime, vo);
                 vo.setOnline(true);
             }
@@ -109,6 +114,46 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
     public void renameClient(RenameClientVO vo) {
         this.update(Wrappers.<Client>update().eq("id", vo.getId()).set("name", vo.getName()));
         this.initClientCache();
+    }
+
+    @Override
+    public ClientDetailsVO clientDetails(int clientId) {
+        ClientDetailsVO vo = this.clientIdCache.get(clientId).asViewObject(ClientDetailsVO.class);
+        BeanUtils.copyProperties(detailMapper.selectById(clientId), vo);
+        vo.setOnline(this.isOnline(currentRuntime.get(clientId)));
+        return vo;
+    }
+
+    @Override
+    public void renameNode(RenameNodeVO vo) {
+        this.update(Wrappers.<Client>update().eq("id", vo.getId()).set("node", vo.getNode())
+                .set("location", vo.getLocation()));
+        this.initClientCache();
+    }
+
+    @Override
+    public RuntimeDetailVO clientRuntimeDetailsNow(int clientId) {
+        return currentRuntime.get(clientId);
+    }
+
+    @Override
+    public RuntimeHistoryVO clientRuntimeDetailsHistory(int clientId) {
+        RuntimeHistoryVO vo = influx.readRuntimeData(clientId);
+        ClientDetail detail = detailMapper.selectById(clientId);
+        BeanUtils.copyProperties(detail, vo);
+        return vo;
+    }
+
+    @Override
+    public void deleteClient(int clientId) {
+        this.removeById(clientId);
+        detailMapper.deleteById(clientId);
+        this.initClientCache();
+        currentRuntime.remove(clientId);
+    }
+
+    private boolean isOnline(RuntimeDetailVO runtime){
+        return runtime != null && System.currentTimeMillis() - runtime.getTimestamp() < 60 * 1000;
     }
 
     private Map<Integer, RuntimeDetailVO> currentRuntime = new ConcurrentHashMap<>();

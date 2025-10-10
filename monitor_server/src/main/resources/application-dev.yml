@@ -43,8 +43,8 @@ spring:
     verify:
       mail-limit: 60
     flow:
-      period: 3
-      limit: 50
+      period: 10
+      limit: 100
       block: 30
     cors:
       origin: '*'
@@ -56,8 +56,7 @@ spring:
     username: 'minioadmin'
     password: 'StrongPassw0rd!'
 
-  weather:
-    key: ad4395f106234352855ae89861543a9c
+
 
 
 
