@@ -100,7 +100,11 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
     public List<ClientPreviewVO> listClients() {
         return clientIdCache.values().stream().map(client -> {
             ClientPreviewVO vo = client.asViewObject(ClientPreviewVO.class);
-            BeanUtils.copyProperties(detailMapper.selectById(vo.getId()), vo);
+            // 添加null检查，避免BeanUtils.copyProperties抛出异常
+            Object detail = detailMapper.selectById(vo.getId());
+            if (detail != null) {
+                BeanUtils.copyProperties(detail, vo);
+            }
             RuntimeDetailVO runtime = currentRuntime.get(client.getId());
             if (this.isOnline(runtime)) {
                 BeanUtils.copyProperties(runtime, vo);
@@ -109,6 +113,7 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
             return vo;
         }).toList();
     }
+
 
     @Override
     public void renameClient(RenameClientVO vo) {
@@ -156,10 +161,14 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
     public List<ClientSimpleVO> listSimpleList() {
         return clientIdCache.values().stream().map(client -> {
             ClientSimpleVO vo = client.asViewObject(ClientSimpleVO.class);
-            BeanUtils.copyProperties(detailMapper.selectById(vo.getId()), vo);
+            ClientDetail detail = detailMapper.selectById(vo.getId());
+            if (detail != null) {
+                BeanUtils.copyProperties(detail, vo);
+            }
             return vo;
         }).toList();
     }
+
 
     @Override
     public void saveClientSshConnection(SshConnectionVO vo) {
