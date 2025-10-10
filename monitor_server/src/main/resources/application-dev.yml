@@ -33,11 +33,15 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   security:
+    jwt:
+      key: 'abcdefghijklmn'
+      expire: 72
+      limit:
+        base: 10
+        upgrade: 300
+        frequency: 30
     filter:
       order: -100
-    jwt:
-      key: abcdefghijk
-      expire: 7
 
   web:
     verify:

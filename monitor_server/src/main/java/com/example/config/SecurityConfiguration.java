@@ -4,7 +4,9 @@ import com.example.entity.RestBean;
 import com.example.entity.dto.Account;
 import com.example.entity.vo.response.AuthorizeVO;
 import com.example.filter.JWTAuthorizeFilter;
+import com.example.filter.RequestLogFilter;
 import com.example.service.AccountService;
+import com.example.utils.Const;
 import com.example.utils.JwtUtils;
 import jakarta.annotation.Resource;
 import jakarta.servlet.ServletException;
@@ -28,85 +30,108 @@ import java.io.PrintWriter;
 @Configuration
 public class SecurityConfiguration {
     @Resource
-    JwtUtils utils;
+    JWTAuthorizeFilter jwtAuthenticationFilter;
 
     @Resource
-    JWTAuthorizeFilter jwtAuthorizeFilter;
+    RequestLogFilter requestLogFilter;
+
+    @Resource
+    JwtUtils utils;
 
     @Resource
     AccountService service;
 
+    /**
+     * 针对于 SpringSecurity 6 的新版配置方法
+     * @param http 配置器
+     * @return 自动构建的内置过滤器链
+     * @throws Exception 可能的异常
+     */
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http)throws Exception{
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
                 .authorizeHttpRequests(conf -> conf
+                        .requestMatchers("/terminal/**").permitAll()
                         .requestMatchers("/api/auth/**", "/error").permitAll()
                         .requestMatchers("/monitor/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .anyRequest().authenticated())
-                .formLogin(conf -> conf.loginProcessingUrl("/api/auth/login")
-                        .failureHandler(this::onAuthenticationFailure)
-                        .successHandler(this::onAuthenticationSuccess))
-                .logout(
-                        conf -> conf.logoutUrl("/api/auth/logout")
-                                .logoutSuccessHandler(this::onLogoutSuccess)
+                        .requestMatchers("/api/user/sub/**").hasRole(Const.ROLE_ADMIN)
+                        .anyRequest().hasAnyRole(Const.ROLE_ADMIN, Const.ROLE_NORMAL)
+                )
+                .formLogin(conf -> conf
+                        .loginProcessingUrl("/api/auth/login")
+                        .failureHandler(this::handleProcess)
+                        .successHandler(this::handleProcess)
+                        .permitAll()
+                )
+                .logout(conf -> conf
+                        .logoutUrl("/api/auth/logout")
+                        .logoutSuccessHandler(this::onLogoutSuccess)
                 )
                 .exceptionHandling(conf -> conf
-                        .authenticationEntryPoint(this::onUnauthorized)
-                        .accessDeniedHandler(this::onAccessDeny))
+                        .accessDeniedHandler(this::handleProcess)
+                        .authenticationEntryPoint(this::handleProcess)
+                )
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(conf ->
-                        conf.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(jwtAuthorizeFilter, UsernamePasswordAuthenticationFilter.class)
+                .sessionManagement(conf -> conf
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(requestLogFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtAuthenticationFilter, RequestLogFilter.class)
                 .build();
     }
 
-    public void onAuthenticationSuccess(HttpServletRequest request,
-                                        HttpServletResponse response,
-                                        Authentication authentication) throws IOException, ServletException{
-        response.setContentType("application/json");
-        User user = (User)authentication.getPrincipal();
-        Account account = service.findAccountByNameOrEmail(user.getUsername());
-        String token = utils.createJwt(user, account.getId(), account.getUsername());
-        AuthorizeVO vo = new AuthorizeVO();
-        vo.setExpire(utils.expireTime());
-        vo.setRole(account.getRole());
-        vo.setToken(token);
-        vo.setUsername(account.getUsername());
-        response.getWriter().write(RestBean.success(vo).asJsonString());
+    /**
+     * 将多种类型的Handler整合到同一个方法中，包含：
+     * - 登录成功
+     * - 登录失败
+     * - 未登录拦截/无权限拦截
+     * @param request 请求
+     * @param response 响应
+     * @param exceptionOrAuthentication 异常或是验证实体
+     * @throws IOException 可能的异常
+     */
+    private void handleProcess(HttpServletRequest request,
+                               HttpServletResponse response,
+                               Object exceptionOrAuthentication) throws IOException {
+        response.setContentType("application/json;charset=utf-8");
+        PrintWriter writer = response.getWriter();
+        if(exceptionOrAuthentication instanceof AccessDeniedException exception) {
+            writer.write(RestBean
+                    .forbidden(exception.getMessage()).asJsonString());
+        } else if(exceptionOrAuthentication instanceof Exception exception) {
+            writer.write(RestBean
+                    .unauthorized(exception.getMessage()).asJsonString());
+        } else if(exceptionOrAuthentication instanceof Authentication authentication){
+            User user = (User) authentication.getPrincipal();
+            Account account = service.findAccountByNameOrEmail(user.getUsername());
+            String jwt = utils.createJwt(user, account.getUsername(), account.getId());
+            if(jwt == null) {
+                writer.write(RestBean.forbidden("Login verification too frequent, please try again later").asJsonString());
+            } else {
+                AuthorizeVO vo = account.asViewObject(AuthorizeVO.class, o -> o.setToken(jwt));
+                vo.setExpire(utils.expireTime());
+                writer.write(RestBean.success(vo).asJsonString());
+            }
+        }
     }
 
-    public void onLogoutSuccess(HttpServletRequest request,
-                                HttpServletResponse response,
-                                Authentication authentication) throws IOException, ServletException {
-        response.setContentType("application/json");
+    /**
+     * 退出登录处理，将对应的Jwt令牌列入黑名单不再使用
+     * @param request 请求
+     * @param response 响应
+     * @param authentication 验证实体
+     * @throws IOException 可能的异常
+     */
+    private void onLogoutSuccess(HttpServletRequest request,
+                                 HttpServletResponse response,
+                                 Authentication authentication) throws IOException {
+        response.setContentType("application/json;charset=utf-8");
         PrintWriter writer = response.getWriter();
         String authorization = request.getHeader("Authorization");
-        if (utils.invalidateJwt(authorization)){writer.write(RestBean.success
-                (new AuthorizeVO()).asJsonString());}
-        else{writer.write(RestBean.failure(400, "fail to logout").asJsonString());}
-    }
-
-    public void onAccessDeny(HttpServletRequest request,
-                             HttpServletResponse response,
-                             AccessDeniedException accessDeniedException) throws IOException, ServletException {
-        response.setContentType("application/json");
-        response.getWriter().write(RestBean.forbidden(accessDeniedException.getMessage())
-                .asJsonString());
-    }
-
-    public void onUnauthorized(HttpServletRequest request,
-                               HttpServletResponse response,
-                               AuthenticationException exception) throws IOException, ServletException {
-        response.setContentType("application/json");
-        response.getWriter().write(RestBean.unauthorized(exception.getMessage())
-                .asJsonString());
-    }
-
-    public void onAuthenticationFailure(HttpServletRequest request,
-                                        HttpServletResponse response,
-                                        AuthenticationException exception) throws IOException, ServletException {
-        response.getWriter().write(RestBean.unauthorized(exception.getMessage())
-                .asJsonString());
+        if(utils.invalidateJwt(authorization)) {
+            writer.write(RestBean.success("Successfully log out").asJsonString());
+            return;
+        }
+        writer.write(RestBean.failure(400, "Fail to log out").asJsonString());
     }
 }
