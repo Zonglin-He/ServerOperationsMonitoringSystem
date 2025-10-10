@@ -1,6 +1,6 @@
 <script setup>
 import {computed} from 'vue'
-import {copyIp, fitByUnit, osNameToIcon, percentageToStatus, rename} from '@/tools'
+import {copyIp, fitByUnit, locationToFlagClass, osNameToIcon, percentageToStatus, rename} from '@/tools'
 
 const props = defineProps({
   data: Object,
@@ -14,6 +14,7 @@ const osDisplay = computed(() => {
   const parts = [osName.value, osVersion.value].filter(Boolean)
   return parts.length ? parts.join(' ') : 'Unknown'
 })
+const locationClass = computed(() => locationToFlagClass(props.data?.location))
 </script>
 
 <template>
@@ -21,7 +22,7 @@ const osDisplay = computed(() => {
     <div style="display: flex;justify-content: space-between">
       <div>
         <div class="name">
-          <span :class="`flag-icon flag-icon-${data.location}`"></span>
+          <span :class="locationClass"></span>
           <span style="margin: 0 5px">{{ data.name }}</span>
           <i class="fa-solid fa-pen-to-square interact-item" @click.stop="rename(data.id, data.name, update)"></i>
         </div>

@@ -1,7 +1,7 @@
 <script setup>
 import {computed, reactive, watch} from "vue";
 import {get, post} from "@/net";
-import {copyIp, cpuNameToImage, fitByUnit, osNameToIcon, percentageToStatus, rename} from "@/tools";
+import {copyIp, cpuNameToImage, fitByUnit, locationToFlagClass, osNameToIcon, percentageToStatus, rename} from "@/tools";
 import {ElMessage, ElMessageBox} from "element-plus";
 import RuntimeHistory from "@/component/RuntimeHistory.vue";
 import {Connection, Delete} from "@element-plus/icons-vue";
@@ -87,6 +87,7 @@ const osDisplay = computed(() => {
   const parts = [osName.value, osVersion.value].filter(Boolean)
   return parts.length ? parts.join(' ') : 'Unknown'
 })
+const baseLocationClass = computed(() => locationToFlagClass(details.base?.location))
 
 const init = id => {
   if(id !== -1) {
@@ -137,7 +138,7 @@ watch(() => props.id, init, { immediate: true })
           </div>
           <div v-if="!details.editNode">
             <span>Server Node</span>
-            <span :class="`flag-icon flag-icon-${details.base.location}`"></span>&nbsp;
+            <span :class="baseLocationClass"></span>&nbsp;
             <span>{{details.base.node}}</span>&nbsp;
             <i @click.stop="enableNodeEdit"
                class="fa-solid fa-pen-to-square interact-item"/>
@@ -148,7 +149,7 @@ watch(() => props.id, init, { immediate: true })
               <div style="display: flex">
                 <el-select v-model="nodeEdit.location" style="width: 80px" size="small">
                   <el-option v-for="item in locations" :value="item.name">
-                    <span :class="`flag-icon flag-icon-${item.name}`"></span>&nbsp;
+                    <span :class="locationToFlagClass(item.name)"></span>&nbsp;
                     {{item.desc}}
                   </el-option>
                 </el-select>

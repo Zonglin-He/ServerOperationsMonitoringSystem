@@ -1,7 +1,7 @@
 <script setup>
 import {reactive, ref} from "vue";
 import {Lock, Message, User} from "@element-plus/icons-vue";
-import {osNameToIcon} from "@/tools";
+import {locationToFlagClass, osNameToIcon} from "@/tools";
 import {ElMessage} from "element-plus";
 import {post} from "@/net";
 
@@ -107,7 +107,7 @@ function createSubAccount() {
           <el-checkbox @change="state => onCheck(state, item.id)"/>
           <div style="margin-left: 20px">
             <div style="font-size: 14px;font-weight: bold">
-              <span :class="`flag-icon flag-icon-${item.location}`"></span>
+              <span :class="locationToFlagClass(item.location)"></span>
               <span style="margin: 0 10px">{{ item.name }}</span>
             </div>
             <div style="font-size: 12px;color: grey">
