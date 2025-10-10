@@ -29,6 +29,18 @@ function percentageToStatus(percentage) {
 const defaultOsIcon = {icon: 'fa-linux', color: 'grey'}
 const defaultFlagClass = 'flag-icon flag-icon-xx'
 const supportedLocations = new Set(['cn', 'hk', 'jp', 'us', 'sg', 'kr', 'de'])
+const locationAliases = new Map([
+    ['america', 'us'],
+    ['united states', 'us'],
+    ['unitedstates', 'us'],
+    ['usa', 'us'],
+    ['us-east', 'us'],
+    ['us-west', 'us'],
+    ['singapore', 'sg'],
+    ['sgp', 'sg'],
+    ['sg-east', 'sg'],
+    ['asia-sg', 'sg']
+])
 
 function osNameToIcon(name) {
     if(!name)
@@ -58,12 +70,33 @@ function cpuNameToImage(name) {
         return 'Intel.png'
 }
 
+function resolveLocationAlias(value) {
+    if(locationAliases.has(value))
+        return locationAliases.get(value)
+    for(const [alias, target] of locationAliases.entries()) {
+        if(value.includes(alias))
+            return target
+    }
+    return undefined
+}
+
 function locationToFlagClass(code) {
     if(!code)
         return defaultFlagClass
     const normalized = String(code).trim().toLowerCase()
     if(supportedLocations.has(normalized))
         return `flag-icon flag-icon-${normalized}`
+    const alias = resolveLocationAlias(normalized)
+    if(alias)
+        return `flag-icon flag-icon-${alias}`
+    const parts = normalized.split(/[-_\s]+/)
+    for(const part of parts) {
+        if(supportedLocations.has(part))
+            return `flag-icon flag-icon-${part}`
+        const partAlias = resolveLocationAlias(part)
+        if(partAlias)
+            return `flag-icon flag-icon-${partAlias}`
+    }
     const suffixMatch = normalized.match(/[a-z]{2}$/)
     if(suffixMatch && supportedLocations.has(suffixMatch[0]))
         return `flag-icon flag-icon-${suffixMatch[0]}`
