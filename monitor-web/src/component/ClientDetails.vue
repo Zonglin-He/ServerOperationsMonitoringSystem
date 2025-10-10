@@ -88,6 +88,46 @@ const osDisplay = computed(() => {
   return parts.length ? parts.join(' ') : 'Unknown'
 })
 const baseLocationClass = computed(() => locationToFlagClass(details.base?.location))
+const memoryTotal = computed(() => {
+  if(details.runtime?.memory)
+    return details.runtime.memory
+  if(details.base?.memory)
+    return details.base.memory
+  return 0
+})
+const diskTotal = computed(() => {
+  if(details.runtime?.disk)
+    return details.runtime.disk
+  if(details.base?.disk)
+    return details.base.disk
+  return 0
+})
+const memoryUsage = computed(() => now.value?.memoryUsage ?? 0)
+const diskUsage = computed(() => now.value?.diskUsage ?? 0)
+const memoryPercentage = computed(() => {
+  if(!memoryTotal.value)
+    return 0
+  const percent = memoryUsage.value / memoryTotal.value * 100
+  return Math.min(Math.max(percent, 0), 100)
+})
+const diskPercentage = computed(() => {
+  if(!diskTotal.value)
+    return 0
+  const percent = diskUsage.value / diskTotal.value * 100
+  return Math.min(Math.max(percent, 0), 100)
+})
+const memoryUsageLabel = computed(() => {
+  const usage = memoryUsage.value.toFixed(1)
+  if(!memoryTotal.value)
+    return `${usage} GB`
+  return `${usage} GB / ${memoryTotal.value.toFixed(1)} GB`
+})
+const diskUsageLabel = computed(() => {
+  const usage = diskUsage.value.toFixed(1)
+  if(!diskTotal.value)
+    return `${usage} GB`
+  return `${usage} GB / ${diskTotal.value.toFixed(1)} GB`
+})
 
 const init = id => {
   if(id !== -1) {
@@ -180,7 +220,9 @@ watch(() => props.id, init, { immediate: true })
             <i class="fa-solid fa-microchip"></i>
             <span style="margin-right: 10px">{{` ${details.base.cpuCore} CPU Cores /`}}</span>
             <i class="fa-solid fa-memory"></i>
-            <span>{{` ${details.base.memory.toFixed(1)} GB Memory Capacity`}}</span>
+            <span>{{` ${memoryTotal.toFixed(1)} GB Memory Capacity`}}</span>
+            <i class="fa-solid fa-hard-drive" style="margin-left: 10px"></i>
+            <span>{{` ${diskTotal.toFixed(1)} GB Disk Capacity`}}</span>
           </span>
           </div>
           <div>
@@ -204,10 +246,10 @@ watch(() => props.id, init, { immediate: true })
               <div style="font-size: 13px;color: grey;margin-top: 5px">{{ (now.cpuUsage * 100).toFixed(1) }}%</div>
             </el-progress>
             <el-progress style="margin-left: 20px" type="dashboard" :width="100"
-                         :percentage="now.memoryUsage / details.runtime.memory * 100"
-                         :status="percentageToStatus(now.memoryUsage / details.runtime.memory * 100)">
+                         :percentage="memoryPercentage"
+                         :status="percentageToStatus(memoryPercentage)">
               <div style="font-size: 16px;font-weight: bold;color: initial">Memory</div>
-              <div style="font-size: 13px;color: grey;margin-top: 5px">{{ (now.memoryUsage).toFixed(1) }} GB</div>
+              <div style="font-size: 13px;color: grey;margin-top: 5px">{{ memoryUsageLabel }}</div>
             </el-progress>
             <div style="flex: 1;margin-left: 30px;display: flex;flex-direction: column;height: 80px">
               <div style="flex: 1;font-size: 14px">
@@ -226,11 +268,11 @@ watch(() => props.id, init, { immediate: true })
                     <i class="fa-solid fa-hard-drive"></i>
                     <span> Total Disk Capacity</span>
                   </div>
-                  <div>{{now.diskUsage.toFixed(1)}} GB / {{details.runtime.disk.toFixed(1)}} GB</div>
+                  <div>{{ diskUsageLabel }}</div>
                 </div>
                 <el-progress type="line" :show-text="false"
-                             :status="percentageToStatus(now.diskUsage / details.runtime.disk * 100)"
-                             :percentage="now.diskUsage / details.runtime.disk * 100" />
+                             :status="percentageToStatus(diskPercentage)"
+                             :percentage="diskPercentage" />
               </div>
             </div>
           </div>

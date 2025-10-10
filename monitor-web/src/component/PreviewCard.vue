@@ -15,6 +15,20 @@ const osDisplay = computed(() => {
   return parts.length ? parts.join(' ') : 'Unknown'
 })
 const locationClass = computed(() => locationToFlagClass(props.data?.location))
+const memoryUsage = computed(() => props.data?.memoryUsage ?? 0)
+const memoryTotal = computed(() => props.data?.memory ?? 0)
+const memoryPercentage = computed(() => {
+  if(!memoryTotal.value)
+    return 0
+  const percent = memoryUsage.value / memoryTotal.value * 100
+  return Math.min(Math.max(percent, 0), 100)
+})
+const memoryUsageLabel = computed(() => {
+  const usage = memoryUsage.value.toFixed(1)
+  if(!memoryTotal.value)
+    return `${usage} GB`
+  return `${usage} GB / ${memoryTotal.value.toFixed(1)} GB`
+})
 </script>
 
 <template>
@@ -54,7 +68,7 @@ const locationClass = computed(() => locationToFlagClass(props.data?.location))
       <i class="fa-solid fa-microchip"></i>
       <span style="margin-right: 10px">{{` ${data.cpuCore} CPU`}}</span>
       <i class="fa-solid fa-memory"></i>
-      <span>{{` ${data.memory.toFixed(1)} GB`}}</span>
+      <span>{{` ${memoryTotal.toFixed(1)} GB`}}</span>
     </div>
     <div class="progress">
       <span>{{`CPU: ${(data.cpuUsage * 100).toFixed(1)}%`}}</span>
@@ -62,9 +76,9 @@ const locationClass = computed(() => locationToFlagClass(props.data?.location))
                    :percentage="data.cpuUsage * 100" :stroke-width="5" :show-text="false"/>
     </div>
     <div class="progress">
-      <span>Memory: <b>{{data.memoryUsage.toFixed(1)}}</b> GB</span>
-      <el-progress :status="percentageToStatus(data.memoryUsage/data.memory * 100)"
-                   :percentage="data.memoryUsage/data.memory * 100" :stroke-width="5" :show-text="false"/>
+      <span>Memory: <b>{{ memoryUsageLabel }}</b></span>
+      <el-progress :status="percentageToStatus(memoryPercentage)"
+                   :percentage="memoryPercentage" :stroke-width="5" :show-text="false"/>
     </div>
     <div class="network-flow">
       <div>Network Traffic</div>
