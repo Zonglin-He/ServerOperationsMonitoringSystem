@@ -68,10 +68,10 @@ function internalGet(url, headers, success, failure, error = defaultError){
 }
 
 function login(username, password, remember, success, failure = defaultFailure){
-    internalPost('/api/auth/login', {
-        username: username,
-        password: password
-    }, {
+        const form = new URLSearchParams()
+        form.append('username', username)
+        form.append('password', password)
+        internalPost('/api/auth/login', form, {
         'Content-Type': 'application/x-www-form-urlencoded'
     }, (data) => {
         storeAccessToken(remember, data.token, data.expire)
