@@ -7,7 +7,7 @@
     <div style="margin-top: 50px">
       <el-form :model="form" :rules="rules" ref="formRef">
         <el-form-item prop="username">
-          <el-input v-model="form.username" maxlength="10" type="text" placeholder="Username / Email">
+          <el-input v-model="form.username" maxlength="64" type="text" placeholder="Username / Email">
             <template #prefix>
               <el-icon>
                 <User/>
@@ -16,7 +16,7 @@
           </el-input>
         </el-form-item>
         <el-form-item prop="password">
-          <el-input v-model="form.password" type="password" maxlength="20" style="margin-top: 10px" placeholder="Password">
+          <el-input v-model="form.password" type="password" maxlength="64" style="margin-top: 10px" placeholder="Password">
             <template #prefix>
               <el-icon>
                 <Lock/>

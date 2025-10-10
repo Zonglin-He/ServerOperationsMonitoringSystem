@@ -13,7 +13,7 @@ public class CreateSubAccountVO {
     String username;
     @Email
     String email;
-    @Length(min = 6, max = 20)
+    @Length(min = 6, max = 64)
     String password;
     @Size(min = 1)
     List<Integer> clients;

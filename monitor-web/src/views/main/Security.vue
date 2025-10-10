@@ -72,7 +72,7 @@ const rules = {
   ],
   new_password: [
     { required: true, message: 'Please enter a new password', trigger: 'blur' },
-    { min: 6, max: 16, message: 'Password length must be 6–16 characters', trigger: ['blur'] }
+    { min: 6, max: 64, message: 'Password length must be 6–64 characters', trigger: ['blur'] }
   ],
   new_password_repeat: [
     { required: true, message: 'Please re-enter the new password', trigger: 'blur' },
@@ -127,15 +127,15 @@ function deleteAccount(id) {
                  ref="formRef" style="margin: 20px" label-width="100">
           <el-form-item label="Current Password" prop="password">
             <el-input type="password" v-model="form.password"
-                      :prefix-icon="Lock" placeholder="Current password" maxlength="16"/>
+                      :prefix-icon="Lock" placeholder="Current password" maxlength="64"/>
           </el-form-item>
           <el-form-item label="New Password" prop="new_password">
             <el-input type="password" v-model="form.new_password"
-                      :prefix-icon="Lock" placeholder="New password" maxlength="16"/>
+                      :prefix-icon="Lock" placeholder="New password" maxlength="64"/>
           </el-form-item>
           <el-form-item label="Repeat New Password" prop="new_password_repeat">
             <el-input type="password" v-model="form.new_password_repeat"
-                      :prefix-icon="Lock" placeholder="Repeat new password" maxlength="16"/>
+                      :prefix-icon="Lock" placeholder="Repeat new password" maxlength="64"/>
           </el-form-item>
           <div style="text-align: center">
             <el-button :icon="Switch" @click="resetPassword"
