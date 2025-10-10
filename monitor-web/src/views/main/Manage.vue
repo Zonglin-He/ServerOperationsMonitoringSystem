@@ -99,7 +99,8 @@ const terminal = reactive({
         <div class="desc">Manage all registered host instances here, monitor their status in real time, and operate quickly.</div>
       </div>
       <div>
-        <el-button :icon="Plus" type="primary" plain :disabled="!store.isAdmin"
+        <el-button :icon="Plus" type="primary" plain
+                   :class="{ 'non-admin-button': !store.isAdmin }"
                    @click="openRegisterDrawer">Add New Host</el-button>
       </div>
     </div>
@@ -142,6 +143,10 @@ const terminal = reactive({
 </template>
 
 <style scoped>
+:deep(.non-admin-button) {
+  opacity: 0.9;
+}
+
 :deep(.el-drawer__header) {
   margin-bottom: 10px;
 }
