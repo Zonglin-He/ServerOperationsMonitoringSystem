@@ -54,14 +54,14 @@
         <div style="margin-top: 50px">
           <el-form :model="form" :rules="rules" @validate="onValidate" ref="formRef">
             <el-form-item prop="password">
-              <el-input v-model="form.password" :maxlength="16" type="password" placeholder="New password">
+              <el-input v-model="form.password" :maxlength="64" type="password" placeholder="New password">
                 <template #prefix>
                   <el-icon><Lock /></el-icon>
                 </template>
               </el-input>
             </el-form-item>
             <el-form-item prop="password_repeat">
-              <el-input v-model="form.password_repeat" :maxlength="16" type="password" placeholder="Repeat new password">
+              <el-input v-model="form.password_repeat" :maxlength="64" type="password" placeholder="Repeat new password">
                 <template #prefix>
                   <el-icon><Lock /></el-icon>
                 </template>
@@ -113,7 +113,7 @@ const rules = {
   ],
   password: [
     { required: true, message: 'Please enter a password', trigger: 'blur' },
-    { min: 6, max: 16, message: 'Password length must be 6–16 characters', trigger: ['blur'] }
+    { min: 6, max: 64, message: 'Password length must be 6–64 characters', trigger: ['blur'] }
   ],
   password_repeat: [
     { validator: validatePassword, trigger: ['blur', 'change'] },

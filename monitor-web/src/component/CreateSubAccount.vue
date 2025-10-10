@@ -37,7 +37,7 @@ const rules = {
   ],
   password: [
     { required: true, message: 'Please enter a password', trigger: ['blur', 'change'] },
-    { min: 6, max: 16, message: 'Password length must be between 6–16 characters', trigger: ['blur', 'change'] }
+    { min: 6, max: 64, message: 'Password length must be between 6–64 characters', trigger: ['blur', 'change'] }
   ], email: [
     { required: true, message: 'Please enter an email address', trigger: ['blur', 'change'] },
     {type: 'email', message: 'Please enter a valid email address', trigger: ['blur', 'change']}
@@ -96,7 +96,7 @@ function createSubAccount() {
           </el-form-item>
           <el-form-item label="Password" prop="password">
             <el-input type="password" v-model="form.password"
-                      :prefix-icon="Lock" placeholder="Sub-account password" maxlength="16"/>
+                      :prefix-icon="Lock" placeholder="Sub-account password" maxlength="64"/>
           </el-form-item>
         </el-form>
         <el-divider style="margin: 10px 0"/>

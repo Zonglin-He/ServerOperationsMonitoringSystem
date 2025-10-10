@@ -5,8 +5,8 @@ import org.hibernate.validator.constraints.Length;
 
 @Data
 public class ChangePasswordVO {
-    @Length(min = 6, max = 20)
+    @Length(min = 6, max = 64)
     String password;
-    @Length(min = 6, max = 20)
+    @Length(min = 6, max = 64)
     String new_password;
 }
