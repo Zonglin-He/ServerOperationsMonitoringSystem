@@ -9,11 +9,11 @@ import com.example.service.AccountService;
 import com.example.utils.Const;
 import com.example.utils.JwtUtils;
 import jakarta.annotation.Resource;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -23,36 +23,35 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.List;
 
 @Configuration
 public class SecurityConfiguration {
-    @Resource
-    JWTAuthorizeFilter jwtAuthenticationFilter;
 
-    @Resource
-    RequestLogFilter requestLogFilter;
+    @Resource JWTAuthorizeFilter jwtAuthenticationFilter;
+    @Resource RequestLogFilter requestLogFilter;
+    @Resource JwtUtils utils;
+    @Resource AccountService service;
 
-    @Resource
-    JwtUtils utils;
-
-    @Resource
-    AccountService service;
-
-    /**
-     * 针对于 SpringSecurity 6 的新版配置方法
-     * @param http 配置器
-     * @return 自动构建的内置过滤器链
-     * @throws Exception 可能的异常
-     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
+                // ✅ 开启 CORS
+                .cors(cors -> {})
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(conf -> conf.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(conf -> conf
+                        // ✅ 放行所有预检请求
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                         .requestMatchers("/terminal/**").permitAll()
-                        .requestMatchers("/api/auth/**", "/error").permitAll()
+                        .requestMatchers("/api/auth/**", "/error", "/error/**").permitAll()
                         .requestMatchers("/monitor/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/user/sub/**").hasRole(Const.ROLE_ADMIN)
@@ -69,44 +68,61 @@ public class SecurityConfiguration {
                         .logoutSuccessHandler(this::onLogoutSuccess)
                 )
                 .exceptionHandling(conf -> conf
-                        .accessDeniedHandler(this::handleProcess)
-                        .authenticationEntryPoint(this::handleProcess)
+                        .accessDeniedHandler(this::handleProcess)       // 403
+                        .authenticationEntryPoint(this::handleProcess)  // 401
                 )
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(conf -> conf
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(requestLogFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, RequestLogFilter.class)
                 .build();
     }
 
-    /**
-     * 将多种类型的Handler整合到同一个方法中，包含：
-     * - 登录成功
-     * - 登录失败
-     * - 未登录拦截/无权限拦截
-     * @param request 请求
-     * @param response 响应
-     * @param exceptionOrAuthentication 异常或是验证实体
-     * @throws IOException 可能的异常
-     */
+    // ✅ CORS 策略（开发期把前端端口写上，生产换成你的域名）
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration cfg = new CorsConfiguration();
+        // ★ 用 allowedOrigins（明确写死来源），不要 patterns
+        cfg.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:5174",
+                "http://127.0.0.1:5174"
+        ));
+        cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
+        // ★ 放开所有请求头，避免预检因为自定义头（如 token）失败
+        cfg.addAllowedHeader(CorsConfiguration.ALL);
+        // （可选）暴露常见下载/认证头
+        cfg.setExposedHeaders(List.of("Authorization","Content-Disposition"));
+        cfg.setAllowCredentials(true);
+        cfg.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", cfg);
+        return source;
+    }
+
+
+    // ✅ 统一 handler：记得设置 HTTP 状态码
     private void handleProcess(HttpServletRequest request,
                                HttpServletResponse response,
                                Object exceptionOrAuthentication) throws IOException {
         response.setContentType("application/json;charset=utf-8");
         PrintWriter writer = response.getWriter();
-        if(exceptionOrAuthentication instanceof AccessDeniedException exception) {
-            writer.write(RestBean
-                    .forbidden(exception.getMessage()).asJsonString());
-        } else if(exceptionOrAuthentication instanceof Exception exception) {
-            writer.write(RestBean
-                    .unauthorized(exception.getMessage()).asJsonString());
-        } else if(exceptionOrAuthentication instanceof Authentication authentication){
+        if (exceptionOrAuthentication instanceof AccessDeniedException ex) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            writer.write(RestBean.forbidden(ex.getMessage()).asJsonString());
+        } else if (exceptionOrAuthentication instanceof AuthenticationException ex) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            writer.write(RestBean.unauthorized(ex.getMessage()).asJsonString());
+        } else if (exceptionOrAuthentication instanceof Exception ex) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            writer.write(RestBean.failure(500, ex.getMessage()).asJsonString());
+        } else if (exceptionOrAuthentication instanceof Authentication authentication) {
             User user = (User) authentication.getPrincipal();
             Account account = service.findAccountByNameOrEmail(user.getUsername());
             String jwt = utils.createJwt(user, account.getUsername(), account.getId());
-            if(jwt == null) {
-                writer.write(RestBean.forbidden("Login verification too frequent, please try again later").asJsonString());
+            if (jwt == null) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                writer.write(RestBean.forbidden("登录验证频繁，请稍后再试").asJsonString());
             } else {
                 AuthorizeVO vo = account.asViewObject(AuthorizeVO.class, o -> o.setToken(jwt));
                 vo.setExpire(utils.expireTime());
@@ -115,23 +131,17 @@ public class SecurityConfiguration {
         }
     }
 
-    /**
-     * 退出登录处理，将对应的Jwt令牌列入黑名单不再使用
-     * @param request 请求
-     * @param response 响应
-     * @param authentication 验证实体
-     * @throws IOException 可能的异常
-     */
     private void onLogoutSuccess(HttpServletRequest request,
                                  HttpServletResponse response,
                                  Authentication authentication) throws IOException {
         response.setContentType("application/json;charset=utf-8");
         PrintWriter writer = response.getWriter();
         String authorization = request.getHeader("Authorization");
-        if(utils.invalidateJwt(authorization)) {
-            writer.write(RestBean.success("Successfully log out").asJsonString());
-            return;
+        if (utils.invalidateJwt(authorization)) {
+            writer.write(RestBean.success("退出登录成功").asJsonString());
+        } else {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            writer.write(RestBean.failure(400, "退出登录失败").asJsonString());
         }
-        writer.write(RestBean.failure(400, "Fail to log out").asJsonString());
     }
 }

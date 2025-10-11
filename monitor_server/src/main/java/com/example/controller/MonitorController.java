@@ -50,16 +50,29 @@ public class MonitorController {
         }else {return RestBean.noPermission();}
     }
 
-    @GetMapping("/details")
-    public RestBean<ClientDetailsVO> details(int clientId,
-                                             @RequestAttribute(Const.ATTR_USER_ID) int userId,
-                                             @RequestAttribute(Const.ATTR_USER_ROLE) String userRole){
-        if (this.permissionCheck(userId, userRole, clientId)){
-            return RestBean.success(service.clientDetails(clientId));
-        }
-        else {return RestBean.noPermission();}
+    // 兼容两种路径：/detail 和 /details
+    @GetMapping({"/detail", "/details"})
+    public RestBean<ClientDetailsVO> details(
+            // 兼容两种参数名：id 或 clientId
+            @RequestParam(value = "id", required = false) Integer id,
+            @RequestParam(value = "clientId", required = false) Integer clientId,
+            @RequestAttribute(Const.ATTR_USER_ID) int userId,
+            @RequestAttribute(Const.ATTR_USER_ROLE) String userRole) {
 
+        int cid = (id != null) ? id : (clientId != null ? clientId : -1);
+        if (cid <= 0) {
+            return RestBean.failure(400, "Missing param: id/clientId");
+        }
+        if (!this.permissionCheck(userId, userRole, cid)) {
+            return RestBean.noPermission();
+        }
+        ClientDetailsVO vo = service.clientDetails(cid);
+        if (vo == null) {
+            return RestBean.failure(404, "Client not found");
+        }
+        return RestBean.success(vo);
     }
+
 
     @PostMapping("/node")
     public RestBean<Void> renameNode(@RequestBody @Valid RenameNodeVO vo,

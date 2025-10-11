@@ -26,9 +26,14 @@ function percentageToStatus(percentage) {
         return 'exception'
 }
 
-const defaultOsIcon = {icon: 'fa-linux', color: 'grey'}
-const defaultFlagClass = 'flag-icon flag-icon-xx'
+// 新包 flag-icons 的默认样式
+const defaultOsIcon = { icon: 'fa-linux', color: 'grey' }
+const defaultFlagClass = 'fi fi-xx'
+
+// 支持的地区代码（2 位小写 ISO）
 const supportedLocations = new Set(['cn', 'hk', 'jp', 'us', 'sg', 'kr', 'de'])
+
+// 常见别名到 ISO 代码
 const locationAlias = new Map([
     ['usa', 'us'],
     ['united states', 'us'],
@@ -36,6 +41,15 @@ const locationAlias = new Map([
     ['sgp', 'sg'],
     ['singapore', 'sg']
 ])
+
+// ✅ 统一生成 class，避免模板里手拼
+export function flagClass(loc) {
+    const raw = (loc || '').toString().trim().toLowerCase()
+    const code = locationAlias.get(raw) || raw
+    const iso2 = supportedLocations.has(code) ? code : 'xx'
+    return `fi fi-${iso2}`           // 若要方形，改成：`fi fis-${iso2}`
+}
+
 
 function osNameToIcon(name) {
     if(!name)
@@ -45,7 +59,7 @@ function osNameToIcon(name) {
     else if(name.indexOf('CentOS') >= 0)
         return {icon: 'fa-centos', color: '#9dcd30'}
     else if(name.indexOf('macOS') >= 0)
-        return {icon: 'fa-apple', color: 'grey'}
+        return {icon: 'fa-apple', color: '#D3D3D3'}
     else if(name.indexOf('Windows') >= 0)
         return {icon: 'fa-windows', color: '#3578b9'}
     else if(name.indexOf('Debian') >= 0)
@@ -100,10 +114,10 @@ function resolveFlagCode(code) {
 }
 
 function locationToFlagClass(code) {
-    if(!code)
-        return defaultFlagClass
-    const result = resolveFlagCode(code)
-    return result ? `flag-icon flag-icon-${result}` : defaultFlagClass
+    if (!code) return defaultFlagClass
+    const result = resolveFlagCode(code)   // 返回类似 'us' 'cn' 的 2 位小写
+    const iso2 = (result && supportedLocations.has(result)) ? result : 'xx'
+    return `fi fi-${iso2}`                 // 方形想要的话用：`fi fis-${iso2}`
 }
 
 const { copy } = useClipboard()

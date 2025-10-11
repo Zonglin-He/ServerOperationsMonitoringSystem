@@ -1,6 +1,7 @@
 package com.example.service.impl;
 
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.entity.dto.Client;
 import com.example.entity.dto.ClientDetail;
@@ -32,14 +33,11 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
     private volatile long cachedClientCount = 0;
     private volatile long lastCacheSyncTime = 0;
 
-    @Resource
-    ClientDetailMapper detailMapper;
+    @Resource private ClientDetailMapper detailMapper;
+    @Resource private InfluxDbUtils influx;
+    @Resource private ClientSshMapper sshMapper;
 
-    @Resource
-    InfluxDbUtils influx;
-
-    @Resource
-    ClientSshMapper sshMapper;
+    private final Map<Integer, RuntimeDetailVO> currentRuntime = new ConcurrentHashMap<>();
 
     @PostConstruct
     public void initClientCache() {
@@ -53,11 +51,10 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
 
     @Override
     public boolean verifyAndRegister(String token) {
-        if (this.registerToken.equals(token)){
+        if (this.registerToken.equals(token)) {
             int id = this.randomClientId();
-            System.out.println(id);
             Client client = new Client(id, "Unnamed device", token, "cn", "Unnamed node", new Date());
-            if (this.save(client)){
+            if (this.save(client)) {
                 registerToken = this.generateNewToken();
                 this.cacheClient(client);
                 cachedClientCount = clientIdCache.size();
@@ -80,49 +77,70 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
         return clientTokenCache.get(token);
     }
 
+    /** 明细 UPSERT：按 client_id 查询最新一条，没有就 insert，有就基于 client_id 执行 update */
     @Override
     public void updateClientDetail(ClientDetailVO vo, Client client) {
         ClientDetail detail = new ClientDetail();
         BeanUtils.copyProperties(vo, detail);
-        detail.setClientId(client.getId());
-        if (detailMapper.selectById(client.getId()) != null){
-            detailMapper.updateById(detail);
-        } else {
+        // 若实体属性名是 clientId，请确保有 @TableField("client_id") 映射
+        try {
+            ClientDetail.class.getMethod("setClientId", Integer.class).invoke(detail, client.getId());
+        } catch (Exception ignore) { /* 列条件更新会兜底 */ }
+
+        ClientDetail exist = detailMapper.selectOne(
+                new QueryWrapper<ClientDetail>()
+                        .eq("client_id", client.getId())
+                        .orderByDesc("id")
+                        .last("limit 1"));
+
+        if (exist == null) {
             detailMapper.insert(detail);
+        } else {
+            detailMapper.update(detail, new UpdateWrapper<ClientDetail>().eq("client_id", client.getId()));
         }
     }
-
 
     @Override
     public void updateRuntimeDetail(RuntimeDetailVO vo, Client client) {
         RuntimeDetailVO old = currentRuntime.put(client.getId(), vo);
-        if (old!=null) {
+        if (old != null) {
             influx.writeRuntimeData(client.getId(), old);
         }
     }
 
+    /** 列表：查库所有客户端 + 拼明细(最新一条) + 在线状态 + 当前使用率 */
     @Override
     public List<ClientPreviewVO> listClients() {
         this.ensureClientCacheReady();
-        return clientIdCache.values().stream().map(client -> {
+        List<Client> clients = this.list();
+        return clients.stream().map(client -> {
             ClientPreviewVO vo = client.asViewObject(ClientPreviewVO.class);
-            ClientDetail detail = detailMapper.selectById(vo.getId());
+
+            ClientDetail detail = detailMapper.selectOne(
+                    new QueryWrapper<ClientDetail>()
+                            .eq("client_id", client.getId())
+                            .orderByDesc("id")
+                            .last("limit 1"));
             if (detail != null) {
-                BeanUtils.copyProperties(detail, vo);
+                // ★ 不要覆盖 vo.id（客户端ID）
+                BeanUtils.copyProperties(detail, vo, "id");
             }
+
             RuntimeDetailVO runtime = currentRuntime.get(client.getId());
-            if (this.isOnline(runtime)) {
+            if (isOnline(runtime)) {
                 BeanUtils.copyProperties(runtime, vo);
                 vo.setOnline(true);
+            } else {
+                vo.setOnline(false);
             }
             return vo;
         }).toList();
     }
 
-
     @Override
     public void renameClient(RenameClientVO vo) {
-        this.update(Wrappers.<Client>update().eq("id", vo.getId()).set("name", vo.getName()));
+        this.update(com.baomidou.mybatisplus.core.toolkit.Wrappers.<Client>update()
+                .eq("id", vo.getId()).set("name", vo.getName()));
         this.refreshClientCache();
     }
 
@@ -130,21 +148,29 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
     public ClientDetailsVO clientDetails(int clientId) {
         this.ensureClientCacheReady();
         Client client = this.clientIdCache.get(clientId);
-        if (client == null) {
-            return null;
-        }
+        if (client == null) client = this.getById(clientId);
+        if (client == null) return null;
+
         ClientDetailsVO vo = client.asViewObject(ClientDetailsVO.class);
-        ClientDetail detail = detailMapper.selectById(clientId);
+
+        ClientDetail detail = detailMapper.selectOne(
+                new QueryWrapper<ClientDetail>()
+                        .eq("client_id", clientId)
+                        .orderByDesc("id")
+                        .last("limit 1"));
         if (detail != null) {
-            BeanUtils.copyProperties(detail, vo);
+            // ★ 不要覆盖 vo.id（客户端ID）
+            BeanUtils.copyProperties(detail, vo, "id");
         }
-        vo.setOnline(this.isOnline(currentRuntime.get(clientId)));
+        vo.setOnline(isOnline(currentRuntime.get(clientId)));
         return vo;
     }
 
     @Override
     public void renameNode(RenameNodeVO vo) {
-        this.update(Wrappers.<Client>update().eq("id", vo.getId()).set("node", vo.getNode())
+        this.update(com.baomidou.mybatisplus.core.toolkit.Wrappers.<Client>update()
+                .eq("id", vo.getId())
+                .set("node", vo.getNode())
                 .set("location", vo.getLocation()));
         this.refreshClientCache();
     }
@@ -157,43 +183,61 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
     @Override
     public RuntimeHistoryVO clientRuntimeDetailsHistory(int clientId) {
         RuntimeHistoryVO vo = influx.readRuntimeData(clientId);
-        ClientDetail detail = detailMapper.selectById(clientId);
+        ClientDetail detail = detailMapper.selectOne(
+                new QueryWrapper<ClientDetail>()
+                        .eq("client_id", clientId)
+                        .orderByDesc("id")
+                        .last("limit 1"));
         if (detail != null) {
-            BeanUtils.copyProperties(detail, vo);
+            // ★ 防御性忽略 id（虽然 RuntimeHistoryVO 里通常没有 id）
+            BeanUtils.copyProperties(detail, vo, "id");
         }
         return vo;
     }
 
+    /** 删除：明细按 client_id 清理；SSH 表主键就是 id=clientId，直接 deleteById */
     @Override
     public void deleteClient(int clientId) {
         this.removeById(clientId);
-        detailMapper.deleteById(clientId);
+        detailMapper.delete(new QueryWrapper<ClientDetail>().eq("client_id", clientId));
+        sshMapper.deleteById(clientId);
         this.refreshClientCache();
         currentRuntime.remove(clientId);
     }
 
+    /** 简要列表：查所有客户端 + 最新明细 */
     @Override
     public List<ClientSimpleVO> listSimpleList() {
         this.ensureClientCacheReady();
-        return clientIdCache.values().stream().map(client -> {
+        List<Client> clients = this.list();
+        return clients.stream().map(client -> {
             ClientSimpleVO vo = client.asViewObject(ClientSimpleVO.class);
-            ClientDetail detail = detailMapper.selectById(vo.getId());
+            ClientDetail detail = detailMapper.selectOne(
+                    new QueryWrapper<ClientDetail>()
+                            .eq("client_id", client.getId())
+                            .orderByDesc("id")
+                            .last("limit 1"));
             if (detail != null) {
-                BeanUtils.copyProperties(detail, vo);
+                // ★ 不要覆盖 vo.id（客户端ID）
+                BeanUtils.copyProperties(detail, vo, "id");
             }
             return vo;
         }).toList();
     }
 
-
+    /** SSH：你的实体主键就是 id -> 直接以 clientId 作为主键 UPSERT */
     @Override
     public void saveClientSshConnection(SshConnectionVO vo) {
         this.ensureClientCacheReady();
         Client client = clientIdCache.get(vo.getId());
-        if (client == null) {return;}
+        if (client == null) client = this.getById(vo.getId());
+        if (client == null) return;
+
         ClientSsh ssh = new ClientSsh();
         BeanUtils.copyProperties(vo, ssh);
-        if(Objects.nonNull(sshMapper.selectById(client.getId()))) {
+        ssh.setId(client.getId()); // 主键即 clientId
+
+        if (sshMapper.selectById(client.getId()) != null) {
             sshMapper.updateById(ssh);
         } else {
             sshMapper.insert(ssh);
@@ -202,25 +246,26 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
 
     @Override
     public SshSettingsVO sshSettings(int clientId) {
-        ClientDetail detail = detailMapper.selectById(clientId);
+        ClientDetail detail = detailMapper.selectOne(
+                new QueryWrapper<ClientDetail>()
+                        .eq("client_id", clientId)
+                        .orderByDesc("id")
+                        .last("limit 1")
+        );
         ClientSsh ssh = sshMapper.selectById(clientId);
-        SshSettingsVO vo;
-        if(ssh == null) {
-            vo = new SshSettingsVO();
-        } else {
-            vo = ssh.asViewObject(SshSettingsVO.class);
-        }
+
+        SshSettingsVO vo = (ssh == null) ? new SshSettingsVO() : ssh.asViewObject(SshSettingsVO.class);
         if (detail != null) {
             vo.setIp(detail.getIp());
         }
         return vo;
     }
 
-    private boolean isOnline(RuntimeDetailVO runtime){
+    /* -------------------- helpers -------------------- */
+
+    private boolean isOnline(RuntimeDetailVO runtime) {
         return runtime != null && System.currentTimeMillis() - runtime.getTimestamp() < 60 * 1000;
     }
-
-    private final Map<Integer, RuntimeDetailVO> currentRuntime = new ConcurrentHashMap<>();
 
     private void refreshClientCache() {
         synchronized (cacheLock) {
@@ -238,15 +283,10 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
             return;
         }
         long now = System.currentTimeMillis();
-        if (now - lastCacheSyncTime < 30_000) {
-            return;
-        }
+        if (now - lastCacheSyncTime < 30_000) return;
         long dbCount = this.count();
-        if (cachedClientCount != dbCount) {
-            this.refreshClientCache();
-        } else {
-            lastCacheSyncTime = now;
-        }
+        if (cachedClientCount != dbCount) this.refreshClientCache();
+        else lastCacheSyncTime = now;
     }
 
     private void cacheClient(Client client) {
@@ -254,15 +294,15 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
         clientTokenCache.put(client.getToken(), client);
     }
 
-    private int randomClientId() {return new Random().nextInt(90000000) + 10000000;}
+    private int randomClientId() {
+        return new Random().nextInt(90000000) + 10000000;
+    }
 
     private String generateNewToken() {
-        String CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        SecureRandom random = new SecureRandom();
+        String CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        SecureRandom r = new SecureRandom();
         StringBuilder sb = new StringBuilder(24);
-        for (int i = 0; i < 24; i++) {
-            sb.append(CHARACTERS.charAt(random.nextInt(CHARACTERS.length())));
-        }
+        for (int i = 0; i < 24; i++) sb.append(CHARS.charAt(r.nextInt(CHARS.length())));
         return sb.toString();
     }
 }

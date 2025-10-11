@@ -49,7 +49,8 @@ public class FlowLimitingFilter extends HttpFilter {
             "/api/monitor/runtime",
             "/monitor/register",
             "/monitor/detail",
-            "/monitor/runtime"
+            "/monitor/runtime",
+            "/api/monitor/list"
     );
 
     @Override
