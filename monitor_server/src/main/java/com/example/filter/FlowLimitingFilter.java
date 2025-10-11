@@ -46,7 +46,10 @@ public class FlowLimitingFilter extends HttpFilter {
     private static final Set<String> WHITELIST = Set.of(
             "/api/monitor/register",
             "/api/monitor/detail",
-            "/api/monitor/runtime"
+            "/api/monitor/runtime",
+            "/monitor/register",
+            "/monitor/detail",
+            "/monitor/runtime"
     );
 
     @Override
@@ -59,7 +62,7 @@ public class FlowLimitingFilter extends HttpFilter {
             return;
         }
 
-        String path = request.getRequestURI();
+        String path = normalizePath(request.getServletPath());
         if (WHITELIST.contains(path)) { // 客户端注册/上报放行
             chain.doFilter(request, response);
             return;
@@ -132,6 +135,39 @@ public class FlowLimitingFilter extends HttpFilter {
      */
     private String groupPath(String uri) {
         // 这里保持精确到接口级；若你希望「同一模块共用一个桶」可改成返回前两段
-        return uri == null ? "/" : uri;
+        return normalizePath(uri);
+    }
+
+    /**
+     * 统一处理路径，消除上下文路径、重复斜杠以及末尾斜杠导致的匹配问题
+     */
+    private String normalizePath(String rawPath) {
+        if (rawPath == null || rawPath.isBlank()) {
+            return "/";
+        }
+        String path = rawPath;
+        int semicolonIndex = path.indexOf(';');
+        if (semicolonIndex >= 0) {
+            path = path.substring(0, semicolonIndex);
+        }
+        // 去除多余斜杠
+        StringBuilder cleaned = new StringBuilder(path.length());
+        boolean previousSlash = false;
+        for (char c : path.toCharArray()) {
+            if (c == '/') {
+                if (!previousSlash) {
+                    cleaned.append(c);
+                    previousSlash = true;
+                }
+            } else {
+                cleaned.append(c);
+                previousSlash = false;
+            }
+        }
+        String normalized = cleaned.toString();
+        if (normalized.length() > 1 && normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 }
