@@ -53,5 +53,6 @@ docker compose up -d --build
 - **前端无法请求后端**：确认 `VITE_API_BASE` 是否指向后端的外部访问地址；若在容器网络内互访，可设置为 `http://backend:8080`。
 - **后端连不上数据库/消息队列**：检查对应容器是否已启动，或调整环境变量中的主机名与凭据。Compose 默认的服务名（如 `mysql`、`rabbitmq`）会自动注册为 DNS 主机名。
 - **端口冲突**：如宿主机已占用对应端口，可在 `docker-compose.yml` 中修改左侧的宿主机端口，例如 `8081:8080`。
+- **是否需要手动打包可执行 JAR？**：不需要。在执行 `docker compose up -d --build` 时，后端镜像的多阶段构建会自动运行 `mvn -DskipTests package`，并将生成的 `app.jar` 复制到运行镜像中。如果希望在本机验证打包结果，可在 `monitor_server` 目录使用 `./mvnw clean package -DskipTests`（或安装了 Maven 的情况下执行 `mvn clean package -DskipTests`）。
 
 部署完成后，即可通过 Docker Desktop 或 IDEA 的 Docker 面板对容器进行启动、停止、查看日志等操作。
