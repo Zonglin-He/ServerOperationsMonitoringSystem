@@ -13,6 +13,12 @@ services:
       - mysql-data:/var/lib/mysql
     ports:
       - "3306:3306"
+    # 可选：让后端等 MySQL 就绪更稳一些
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   rabbitmq:
     image: rabbitmq:3.12-management
@@ -55,46 +61,68 @@ services:
     volumes:
       - minio-data:/data
 
+  redis:
+    image: redis:7-alpine
+    container_name: monitor-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
   backend:
     build:
       context: ./monitor_server
     container_name: monitor-backend
     restart: unless-stopped
     depends_on:
-      - mysql
-      - rabbitmq
-      - influxdb
-      - minio
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      influxdb:
+        condition: service_started
+      minio:
+        condition: service_started
+      redis:
+        condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/monitor?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=UTC
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/monitor?useUnicode=true&characterEncoding=utf8&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 123456
+
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: admin
       SPRING_RABBITMQ_PASSWORD: admin
+
       INFLUX_URL: http://influxdb:8086
       INFLUX_TOKEN: dev-token
       INFLUX_ORG: dev
       INFLUX_BUCKET: monitor
+
       SPRING_MINIO_ENDPOINT: http://minio:9000
       SPRING_MINIO_USERNAME: minioadmin
       SPRING_MINIO_PASSWORD: StrongPassw0rd!
-      SPRING_MAIL_HOST: smtp.163.com
-      SPRING_MAIL_USERNAME: 13325744856@163.com
-      SPRING_MAIL_PASSWORD: SKsRABSk997n7XhS
-      SPRING_MAIL_PORT: 465
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE: "true"
+
+      # 关键：后端连接 Redis 不能再用 localhost
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_URL: redis://redis:6379
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+
+      # 保持服务内部监听 80（你的日志就是 80）
+      SERVER_PORT: 80
     ports:
-      - "8080:80"
+      - "8080:80"# 宿主 8080 -> 容器 80（方便你本机调试）
+
 
   frontend:
     build:
       context: ./monitor-web
       args:
-        VITE_API_BASE: http://localhost:8080
+        # 让前端走相对路径 /api，由 Nginx 反代到 backend
+        VITE_API_BASE: ""   # 或者直接去掉 args 节
     container_name: monitor-frontend
     restart: unless-stopped
     depends_on:

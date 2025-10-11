@@ -1,14 +1,14 @@
-# 构建阶段：使用 Maven 打包 Spring Boot 应用
-FROM maven:3.9.6-eclipse-temurin-17 AS builder
-WORKDIR /workspace
+# 构建阶段：JDK 21
+FROM maven:3.9.9-eclipse-temurin-21 AS build
+WORKDIR /app
 COPY pom.xml .
 COPY src ./src
+RUN java -version && mvn -v
 RUN mvn -B -DskipTests package
 
-# 运行阶段：仅包含 JRE
-FROM eclipse-temurin:17-jre
+# 运行阶段：JRE 21
+FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=builder /workspace/target/*.jar app.jar
-ENV SPRING_PROFILES_ACTIVE=prod
-EXPOSE 80
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+COPY --from=build /app/target/*-SNAPSHOT.jar app.jar
+ENV JAVA_OPTS=""
+ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar app.jar"]
