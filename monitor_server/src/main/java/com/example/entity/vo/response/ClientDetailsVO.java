@@ -8,6 +8,7 @@ public class ClientDetailsVO {
     String name;
     boolean online;
     String location;
+    String node;
     String ip;
     String cpuName;
     String osName;

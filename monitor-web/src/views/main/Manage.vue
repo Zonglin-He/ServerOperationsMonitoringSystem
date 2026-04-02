@@ -1,7 +1,7 @@
 <script setup>
 import PreviewCard from "@/component/PreviewCard.vue";
 import {computed, reactive, ref} from "vue";
-import {get} from "@/net";
+import {get, post, resolveServerAddress} from "@/net";
 import ClientDetails from "@/component/ClientDetails.vue";
 import RegisterCard from "@/component/RegisterCard.vue";
 import {Plus} from "@element-plus/icons-vue";
@@ -54,22 +54,25 @@ const clientList = computed(() => {
 
 const register = reactive({
   show: false,
+  created: false,
+  clientId: null,
   token: '',
-  loading: false
+  loading: false,
+  form: {
+    name: '',
+    node: '',
+    location: 'cn'
+  }
 })
 
-const refreshToken = () => {
-  register.loading = true
+const resetRegister = () => {
+  register.created = false
+  register.clientId = null
   register.token = ''
-  get('/api/monitor/register', token => {
-    register.token = token
-    register.loading = false
-  }, (message, status, url) => {
-    register.loading = false
-    register.show = false
-    ElMessage.warning(message)
-    console.warn(`Request URL: ${url}, Status: ${status}, Message: ${message}`)
-  })
+  register.loading = false
+  register.form.name = ''
+  register.form.node = ''
+  register.form.location = 'cn'
 }
 
 const openRegisterDrawer = () => {
@@ -77,8 +80,32 @@ const openRegisterDrawer = () => {
     ElMessage.warning('Only administrator accounts can register new hosts.')
     return
   }
+  resetRegister()
   register.show = true
-  refreshToken()
+}
+
+const submitRegister = () => {
+  if (!register.form.name.trim()) {
+    ElMessage.warning('Please enter a host name.')
+    return
+  }
+  if (!register.form.node.trim()) {
+    ElMessage.warning('Please enter a node name.')
+    return
+  }
+  register.loading = true
+  post('/api/monitor/create', register.form, data => {
+    register.created = true
+    register.clientId = data.id
+    register.token = data.token
+    register.loading = false
+    updateList()
+    ElMessage.success('Host created. It can stay offline until the client starts.')
+  }, (message, status, url) => {
+    register.loading = false
+    ElMessage.warning(message)
+    console.warn(`Request URL: ${url}, Status: ${status}, Message: ${message}`)
+  })
 }
 
 function openTerminal(id) {
@@ -123,8 +150,14 @@ const terminal = reactive({
       <client-details :id="detail.id" :update="updateList" @delete="updateList" @terminal="openTerminal"/>
     </el-drawer>
     <el-drawer v-model="register.show" direction="btt" :with-header="false"
-               style="width: 600px;margin: 10px auto" size="320">
-      <register-card :token="register.token" :loading="register.loading"/>
+               style="width: 600px;margin: 10px auto" size="460" @closed="resetRegister">
+      <register-card :token="register.token"
+                     :loading="register.loading"
+                     :created="register.created"
+                     :client-id="register.clientId"
+                     :form="register.form"
+                     :server-address="resolveServerAddress()"
+                     @submit="submitRegister"/>
     </el-drawer>
     <el-drawer style="width: 800px" :size="520" direction="btt"
                @close="terminal.id = -1"

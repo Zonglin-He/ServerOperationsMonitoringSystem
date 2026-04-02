@@ -1,0 +1,275 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  urlcolor=blue
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+\setlist[itemize]{leftmargin=1.5em}
+\setlist[enumerate]{leftmargin=1.8em}
+\renewcommand{\arraystretch}{1.2}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\titleformat{\section}{\large\bfseries}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.6em}{}
+
+\newcommand{\placeholderfigure}[3]{
+  \begin{figure}[H]
+    \centering
+    \fbox{\parbox[c][#2][c]{0.84\linewidth}{\centering\textbf{#1}\\[0.5em]\small #3}}
+    \caption{#1}
+  \end{figure}
+}
+
+\begin{document}
+\emergencystretch=2em
+
+\begin{titlepage}
+  \centering
+  {\Large CPS 3962 Object-Oriented Analysis and Design \par}
+  \vspace{1cm}
+  {\LARGE \textbf{Final Project: Server Operations Monitoring System}\par}
+  \vspace{0.6cm}
+  {\large Dr. Hamza Djigal\par}
+  {\large Assistant Professor\par}
+  {\large Department of Computer Science, Wenzhou-Kean University\par}
+  {\large dhamza@kean.edu\par}
+  \vfill
+  {\large March 26, 2026 (Spring)\par}
+\end{titlepage}
+
+\pagenumbering{gobble}
+\tableofcontents
+\newpage
+\pagenumbering{arabic}
+
+\section{Project Overview}
+
+\textbf{Project Title:} Server Operations Monitoring System
+
+\textbf{Objective:} Develop a lightweight platform for registering monitored hosts, collecting operating-system metrics through a Java probe, storing historical performance data, and enabling secure remote operations from a browser-based console.
+
+\textbf{Key Features (MVP):}
+\begin{itemize}
+  \item \textbf{User Management and Authorization:} administrator and sub-account login, JWT session issuance, email verification, password reset, and host-level permission control.
+  \item \textbf{One-Time Host Registration:} an administrator generates a short-lived registration token and a new probe uses it once to join the platform.
+  \item \textbf{Real-Time Monitoring:} CPU, memory, disk, and network metrics are collected by the client and displayed in the dashboard with online/offline detection.
+  \item \textbf{Historical Metrics:} runtime samples are persisted to InfluxDB and rendered in charts for trend analysis.
+  \item \textbf{Browser-Based SSH:} the backend proxies WebSocket traffic to SSH so authorized users can open a terminal directly in the web UI.
+  \item \textbf{Operations Governance:} Redis-based throttling, request tracing with Snowflake IDs, and Swagger/OpenAPI support for backend inspection.
+\end{itemize}
+
+\section{Waterfall Methodology Phases}
+
+\subsection{Requirements Gathering}
+
+\textbf{Functional Requirements:}
+\begin{itemize}
+  \item \textbf{Administrator:} log in, issue registration tokens, view all hosts, rename hosts, edit node and location metadata, delete hosts, save SSH credentials, and create sub-accounts.
+  \item \textbf{Sub-account:} log in, access only assigned hosts, inspect current and historical metrics, use the browser terminal when authorized, and maintain account security settings.
+  \item \textbf{Probe Agent:} register to the server once, upload base hardware information, and push runtime metrics on a fixed schedule.
+  \item \textbf{Platform Services:} send email verification codes, enforce throttling on sensitive actions, and expose monitoring APIs for the frontend.
+\end{itemize}
+
+\textbf{Non-Functional Requirements:}
+\begin{itemize}
+  \item \textbf{Security:} JWT validation, role-based and per-host authorization, logout invalidation, and Redis throttling for repeated requests.
+  \item \textbf{Performance:} the frontend refreshes host status every 10 seconds and the probe reports runtime data every minute.
+  \item \textbf{Scalability:} relational metadata is separated from time-series data by using MySQL and InfluxDB for different workloads.
+  \item \textbf{Reliability:} client cache refresh, graceful login validation, and persistent infrastructure services via Docker Compose.
+  \item \textbf{Usability:} a Vue single-page application provides login, dashboard, charts, sub-user management, and SSH terminal access.
+\end{itemize}
+
+\textbf{Deliverables:}
+\begin{itemize}
+  \item Use Case Diagram for Administrator, Sub-account, and Probe Agent
+  \item Sequence Diagram for Host Registration and Monitoring Update
+  \item Activity Diagram for Runtime Collection and Visualization Flow
+\end{itemize}
+
+\subsection{System Analysis}
+
+The codebase reveals three core interaction scenarios:
+\begin{itemize}
+  \item \textbf{Host onboarding:} the administrator requests \texttt{/api/monitor/register}, the probe sends the token to \texttt{/monitor/register}, then uploads hardware details through \texttt{/monitor/detail}.
+  \item \textbf{Monitoring cycle:} the probe collects metrics with OSHI, Quartz triggers the upload job, the backend stores current values in memory and previous samples in InfluxDB, and the frontend polls for live and historical data.
+  \item \textbf{Remote operations:} the user saves SSH settings, opens the terminal drawer, and the server upgrades to \texttt{/terminal/\{clientId\}} to proxy WebSocket traffic into an SSH shell.
+\end{itemize}
+
+\placeholderfigure{Use Case Diagram (Administrator, Sub-account, Probe Agent)}{4.2cm}{Actors interact with authentication, host registration, monitoring dashboard, account security, and browser terminal use cases.}
+
+\placeholderfigure{Sequence Diagram: Host Registration and Detail Synchronization}{4.2cm}{Administrator requests a token, the probe registers once, uploads hardware metadata, and then becomes available in the management dashboard.}
+
+\placeholderfigure{Activity Diagram: Runtime Monitoring Flow}{4.2cm}{Quartz triggers metric collection, the client measures CPU, memory, disk, and network usage, the backend stores data, and the UI visualizes updates.}
+
+\subsection{System Design}
+
+\textbf{Architecture Summary:}
+\begin{itemize}
+  \item \texttt{monitor\_server/}: Spring Boot backend with Spring Security, MyBatis-Plus, Redis, RabbitMQ, InfluxDB, and WebSocket-to-SSH proxying.
+  \item \texttt{monitor\_client/}: Java probe using OSHI for hardware and runtime metrics, Quartz for scheduling, and Java HTTP client for reporting.
+  \item \texttt{monitor-web/}: Vue 3 frontend using Element Plus, Pinia, Axios, ECharts, and xterm.js.
+\end{itemize}
+
+\placeholderfigure{Class Diagram (Design Level)}{4.0cm}{Key design classes include Account, Client, ClientDetail, ClientSsh, RuntimeDetailVO, JwtUtils, FlowUtils, InfluxDbUtils, and TerminalWebSocket.}
+
+\subsubsection*{Database Schema}
+
+\begin{table}[H]
+  \centering
+  \small
+  \begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{2.6cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{2.6cm} >{\raggedright\arraybackslash}p{3.6cm}}
+    \toprule
+    \textbf{Table / Store} & \textbf{Columns} & \textbf{Data Type} & \textbf{Description} \\
+    \midrule
+    \texttt{db\_account} & \texttt{id}, \texttt{username}, \texttt{email}, \texttt{password}, \texttt{role}, \texttt{clients}, \texttt{register\_time} & INT, VARCHAR, JSON, DATETIME & Stores administrator and sub-account identities, encrypted passwords, and assigned host IDs. \\
+    \texttt{db\_client} & \texttt{id}, \texttt{name}, \texttt{token}, \texttt{location}, \texttt{node}, \texttt{register\_time} & INT, VARCHAR, DATETIME & Stores registered hosts and their onboarding metadata. \\
+    \texttt{db\_client\_detail} & \texttt{client\_id}, \texttt{os\_arch}, \texttt{os\_name}, \texttt{os\_version}, \texttt{os\_bit}, \texttt{cpu\_name}, \texttt{cpu\_core}, \texttt{memory}, \texttt{disk}, \texttt{ip} & INT, VARCHAR, DOUBLE & Stores the latest hardware profile for each monitored host. \\
+    \texttt{db\_client\_ssh} & \texttt{id}, \texttt{port}, \texttt{username}, \texttt{password} & INT, VARCHAR & Stores SSH connection settings keyed by host ID. \\
+    \texttt{InfluxDB runtime} & \texttt{clientId}, \texttt{cpuUsage}, \texttt{memoryUsage}, \texttt{diskUsage}, \texttt{networkUpload}, \texttt{networkDownload}, \texttt{diskRead}, \texttt{diskWrite}, \texttt{timestamp} & Time-series measurement fields & Stores runtime samples for history charts and trend analysis. \\
+    \bottomrule
+  \end{tabularx}
+  \caption{Primary Data Storage Design}
+\end{table}
+
+\subsubsection*{UI Wireframes and Main Screens}
+
+\placeholderfigure{Login Screen}{3.5cm}{The welcome page contains username or email login, password input, remember-me support, and a password reset entry point.}
+
+\placeholderfigure{Host Management Dashboard}{3.5cm}{The main dashboard lists registered hosts, filter tags by location, registration token drawer, live health status cards, and detail drawer access.}
+
+\placeholderfigure{Host Detail and SSH Terminal Screen}{3.5cm}{The detail panel combines host metadata, current performance dashboards, history charts, node editing, and terminal launch for remote operations.}
+
+\subsection{Implementation}
+
+\textbf{Implemented Modules:}
+\begin{enumerate}
+  \item \textbf{Authentication and Account Security} \\
+  Spring Security handles form login at \texttt{/api/auth/login}; successful authentication creates a JWT through \texttt{JwtUtils}. Password reset, email modification, and verification-code delivery are managed by \texttt{AuthorizeController} and \texttt{AccountServiceImpl}.
+
+  \item \textbf{Host Registration and Metadata Synchronization} \\
+  \texttt{ClientServiceImpl} generates one-time registration tokens, creates a new host record after validation, and updates hardware details received from the probe.
+
+  \item \textbf{Runtime Monitoring Pipeline} \\
+  The client uses OSHI to collect metrics, Quartz schedules the job every minute, and the backend caches current runtime values while writing previous snapshots to InfluxDB for historical retrieval.
+
+  \item \textbf{Frontend Dashboard and Data Visualization} \\
+  Vue components such as \texttt{PreviewCard.vue}, \texttt{ClientDetails.vue}, and \texttt{RuntimeHistory.vue} provide live host cards, detail drawers, and ECharts-based monitoring charts.
+
+  \item \textbf{Browser-Based SSH} \\
+  \texttt{TerminalWindow.vue} collects SSH credentials, and \texttt{TerminalWebSocket.java} uses JSch to bridge browser traffic to the host shell.
+
+  \item \textbf{Cross-Cutting Infrastructure} \\
+  Redis throttling is implemented in \texttt{FlowUtils}, request logs are correlated with \texttt{SnowflakeIdGenerator}, email verification is sent through RabbitMQ, and Swagger is enabled for API inspection.
+\end{enumerate}
+
+\textbf{Object-Oriented Design Characteristics:}
+\begin{itemize}
+  \item \textbf{Encapsulation:} account, host, SSH, and runtime entities are represented as DTO and VO classes with clear responsibilities.
+  \item \textbf{Abstraction:} controllers expose clean API boundaries while services encapsulate security, registration, cache, and persistence logic.
+  \item \textbf{Modularity:} backend, probe, and frontend are separated into independent deployable modules.
+  \item \textbf{Reusability:} utility classes such as \texttt{JwtUtils}, \texttt{FlowUtils}, and \texttt{MonitorUtils} centralize repeated behavior.
+\end{itemize}
+
+\subsection{Testing}
+
+\textbf{Repository-Provided Automated Tests:}
+\begin{itemize}
+  \item \texttt{JwtUtilsTest}: verifies that JWT blacklist expiration is written to Redis using millisecond precision.
+  \item \texttt{MonitorServerApplicationTests}: validates that the Spring Boot backend context loads successfully.
+  \item \texttt{MonitorClientApplicationTests}: validates that the client application context loads successfully.
+\end{itemize}
+
+\textbf{Build Verification Performed for This Report:}
+\begin{itemize}
+  \item \textbf{Frontend:} \texttt{npm run build} succeeds and generates a production bundle under \texttt{monitor-web/dist/}.
+  \item \textbf{Backend:} Maven dependency resolution works, but compilation currently fails in this environment with \texttt{TypeTag :: UNKNOWN} during the server build. This indicates a toolchain compatibility issue that should be resolved before final deployment.
+  \item \textbf{Client:} the Spring Boot test starts successfully but blocks on the interactive registration prompt because \texttt{ServerConfiguration} requests console input when no saved configuration file exists. This should be mocked or disabled for CI-style testing.
+\end{itemize}
+
+\textbf{Planned Integration and System Tests:}
+\begin{itemize}
+  \item Login, logout, and JWT invalidation flow
+  \item Email verification and password reset flow
+  \item One-time host registration and hardware detail upload
+  \item Runtime metric polling and InfluxDB history retrieval
+  \item Per-host authorization for sub-accounts
+  \item SSH credential save and browser terminal session establishment
+\end{itemize}
+
+\begin{table}[H]
+  \centering
+  \begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{4.2cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{2.5cm}}
+    \toprule
+    \textbf{Test Item} & \textbf{Expected Result} & \textbf{Evidence Source} \\
+    \midrule
+    Backend context startup & Spring Boot server loads without bean wiring errors & Existing automated test \\
+    Client context startup & Probe application starts with configured beans & Existing automated test \\
+    JWT blacklist expiration & Logout token invalidation uses correct Redis expiration unit & Existing automated test \\
+    Frontend production build & Vue application bundles successfully for deployment & Executed build verification \\
+    Host registration flow & A valid one-time token creates exactly one new host record & Controller and service implementation \\
+    Runtime history query & Historical samples are returned from InfluxDB for the selected host & \texttt{InfluxDbUtils.readRuntimeData} \\
+    SSH terminal access & Authorized user can open terminal for allowed hosts only & WebSocket and filter implementation \\
+    \bottomrule
+  \end{tabularx}
+  \caption{Testing Plan and Current Verification Basis}
+\end{table}
+
+\subsection{Deployment}
+
+\begin{itemize}
+  \item \textbf{Local Development:} run the backend in \texttt{monitor\_server/}, the frontend in \texttt{monitor-web/}, and the client in \texttt{monitor\_client/}. Vite can point to the backend through \texttt{VITE\_API\_BASE}.
+  \item \textbf{Containerized Deployment:} the repository includes \texttt{docker-compose.yml} for MySQL, Redis, RabbitMQ, InfluxDB, MinIO, backend, and frontend services.
+  \item \textbf{Production Considerations:} configure HTTPS, restrict CORS origins, rotate secrets, replace plaintext development credentials, and place the frontend and backend behind a reverse proxy that supports WebSocket upgrade.
+  \item \textbf{Operational Notes:} MySQL stores metadata, InfluxDB stores runtime history, Redis supports throttling and token state, and RabbitMQ decouples email verification delivery.
+\end{itemize}
+
+\subsection*{Documentation and Final Submission}
+
+\begin{itemize}
+  \item Requirements specification aligned with code modules
+  \item UML deliverables: use case, sequence, activity, and class diagrams
+  \item Database schema for relational and time-series storage
+  \item UI screen descriptions for login, dashboard, detail, and terminal views
+  \item Test plan and current repository verification evidence
+  \item Deployment notes based on local and Docker Compose execution
+\end{itemize}
+
+\section{Optional Advanced Features (Extra Credit)}
+
+\begin{itemize}
+  \item Threshold-based alerting with email or webhook notifications
+  \item SSH key authentication and secret vault integration
+  \item Anomaly detection for CPU, memory, or network behavior
+  \item Retention-policy management and long-term trend reporting
+  \item Multi-tenant audit log export and approval workflow for sensitive operations
+\end{itemize}
+
+\textbf{Suggested Tech Stack:}
+\begin{itemize}
+  \item \textbf{Frontend:} Vue 3, Vite, Element Plus, Pinia, ECharts, xterm.js
+  \item \textbf{Backend:} Java Spring Boot, Spring Security, MyBatis-Plus, WebSocket
+  \item \textbf{Database:} MySQL and InfluxDB
+  \item \textbf{Infrastructure:} Redis, RabbitMQ, MinIO, Docker Compose
+  \item \textbf{Probe Agent:} Java 17, OSHI, Quartz
+\end{itemize}
+
+\end{document}

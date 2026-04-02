@@ -8,6 +8,7 @@ import com.example.entity.vo.response.*;
 import java.util.List;
 
 public interface ClientService extends IService<Client> {
+    RegisterClientVO createClient(CreateClientVO vo);
     boolean verifyAndRegister(String token);
     String registerToken();
     Client findClientById(int id);

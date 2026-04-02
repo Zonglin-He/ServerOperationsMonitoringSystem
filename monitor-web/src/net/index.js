@@ -142,4 +142,15 @@ function unauthorized() {
     return !takeAccessToken();
 }
 
-export { post, get, login, logout, unauthorized };
+function resolveServerAddress() {
+    const configured = (import.meta.env?.VITE_API_BASE || axios.defaults.baseURL || "").trim();
+    if (!configured) {
+        return window.location.origin;
+    }
+    if (/^https?:\/\//i.test(configured)) {
+        return configured.replace(/\/api\/?$/i, "");
+    }
+    return window.location.origin;
+}
+
+export { post, get, login, logout, unauthorized, resolveServerAddress };

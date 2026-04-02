@@ -2,6 +2,7 @@ package com.example.controller;
 
 import com.example.entity.RestBean;
 import com.example.entity.dto.Account;
+import com.example.entity.vo.request.CreateClientVO;
 import com.example.entity.vo.request.RenameClientVO;
 import com.example.entity.vo.request.RenameNodeVO;
 import com.example.entity.vo.request.RuntimeDetailVO;
@@ -114,6 +115,18 @@ public class MonitorController {
         }
         else {return RestBean.noPermission();}
 
+    }
+
+    @PostMapping("/create")
+    public RestBean<RegisterClientVO> createClient(@RequestBody @Valid CreateClientVO vo,
+                                                   @RequestAttribute(Const.ATTR_USER_ROLE) String userRole) {
+        if (!this.isAdminAccount(userRole)) {
+            return RestBean.noPermission();
+        }
+        RegisterClientVO response = service.createClient(vo);
+        return response == null
+                ? RestBean.failure(500, "Failed to create host")
+                : RestBean.success(response);
     }
 
     @GetMapping("/delete")

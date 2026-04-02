@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> implements ClientService {
 
-    private String registerToken = this.generateNewToken();
+    private String registerToken;
 
     private final Map<Integer, Client> clientIdCache = new ConcurrentHashMap<>();
     private final Map<String, Client> clientTokenCache = new ConcurrentHashMap<>();
@@ -42,6 +42,33 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
     @PostConstruct
     public void initClientCache() {
         this.refreshClientCache();
+        this.registerToken = this.generateAvailableToken();
+    }
+
+    @Override
+    public RegisterClientVO createClient(CreateClientVO vo) {
+        this.ensureClientCacheReady();
+        Client client = new Client(
+                this.generateAvailableClientId(),
+                vo.getName(),
+                this.generateAvailableToken(),
+                vo.getLocation(),
+                vo.getNode(),
+                new Date()
+        );
+        if (!this.save(client)) {
+            return null;
+        }
+        this.cacheClient(client);
+        this.markCacheFresh();
+
+        RegisterClientVO response = new RegisterClientVO();
+        response.setId(client.getId());
+        response.setName(client.getName());
+        response.setNode(client.getNode());
+        response.setLocation(client.getLocation());
+        response.setToken(client.getToken());
+        return response;
     }
 
     @Override
@@ -51,14 +78,17 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
 
     @Override
     public boolean verifyAndRegister(String token) {
+        this.ensureClientCacheReady();
+        if (clientTokenCache.containsKey(token)) {
+            return true;
+        }
         if (this.registerToken.equals(token)) {
-            int id = this.randomClientId();
+            int id = this.generateAvailableClientId();
             Client client = new Client(id, "Unnamed device", token, "cn", "Unnamed node", new Date());
             if (this.save(client)) {
-                registerToken = this.generateNewToken();
+                registerToken = this.generateAvailableToken();
                 this.cacheClient(client);
-                cachedClientCount = clientIdCache.size();
-                lastCacheSyncTime = System.currentTimeMillis();
+                this.markCacheFresh();
                 return true;
             }
         }
@@ -294,8 +324,25 @@ public class ClientServiceImpl extends ServiceImpl<ClientMapper, Client> impleme
         clientTokenCache.put(client.getToken(), client);
     }
 
-    private int randomClientId() {
-        return new Random().nextInt(90000000) + 10000000;
+    private void markCacheFresh() {
+        cachedClientCount = clientIdCache.size();
+        lastCacheSyncTime = System.currentTimeMillis();
+    }
+
+    private int generateAvailableClientId() {
+        int id;
+        do {
+            id = new Random().nextInt(90000000) + 10000000;
+        } while (clientIdCache.containsKey(id) || this.getById(id) != null);
+        return id;
+    }
+
+    private String generateAvailableToken() {
+        String token;
+        do {
+            token = this.generateNewToken();
+        } while (clientTokenCache.containsKey(token) || Objects.equals(token, registerToken));
+        return token;
     }
 
     private String generateNewToken() {
